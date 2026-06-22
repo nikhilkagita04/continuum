@@ -1,0 +1,45 @@
+node_modules/
+.env
+*.log
+.DS_Store
+
+# compiled native helpers — build locally via swiftc
+daemon/ocr
+daemon/ax
+daemon/audio
+daemon/stage1/capture
+daemon/stage1/screen
+
+# packaging artifacts
+packaging/dist/
+
+# local data store
+*.ndjson
+.continuum/
+
+# large eval datasets (277MB) — not for the repo
+evals/longmemeval/data/
+
+# python cache
+__pycache__/
+*.pyc
+
+# hackathon execution traces + personal capture logs — never public
+logs/
+
+# not part of the open shovel — kept on disk, never published:
+#   use cases (proprietary), old backend, mid-flight research, internal
+#   strategy, hackathon scaffolding, unwired legacy capture helpers
+extension/
+lovable/
+native/
+demo.html
+evals/
+backend/server.mjs
+backend/README.md
+backend/.env.example
+docs/architecture/shipping.md
+daemon/ax.swift
+daemon/ocr.swift
+daemon/audio.swift
+daemon/AUDIO.md

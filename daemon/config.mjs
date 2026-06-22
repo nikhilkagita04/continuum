@@ -1,0 +1,78 @@
+// Config + tier resolution. The whole product surface in one place.
+//
+// Tiers (the "shovel" business model):
+//   free        — fully local (Ollama) or hashed fallback. Capture + segment + vector
+//                 recall + on-device summaries. $0, private, no key. NO graph.
+//   pro         — bring an OpenAI/Anthropic key (or our hosted endpoint). Adds the
+//                 temporal knowledge graph (entity/relation extraction needs a frontier
+//                 model — local models provably can't satisfy the schemas).
+//   enterprise  — self-hosted or cloud, team graph, SSO. (sales)
+//
+// Resolution order: ~/.continuum/config.json  <  environment variables.
+import os from 'node:os';
+import fs from 'node:fs';
+import path from 'node:path';
+import {
+  localEmbedder, ollamaEmbedder, openaiEmbedder, apiEmbedder,
+  llmClient, ollamaLLM, graphClient,
+} from './adapters.mjs';
+
+export const DATA_DIR = process.env.CONTINUUM_DATA || path.join(os.homedir(), '.continuum');
+const CFG_PATH = path.join(DATA_DIR, 'config.json');
+
+const DEFAULTS = {
+  tier: 'free',
+  capture:    { source: 'screen' },                  // screen (OCR, universal) | ax (accessibility, native apps)
+  files:      { watch: [] },                          // dirs to capture writes from, e.g. ["~/Documents", "~/code"]
+  embeddings: { provider: 'local', model: '' },     // local | ollama | openai | api
+  llm:        { provider: 'none',  model: '' },      // none | ollama | openai | anthropic
+  graph:      { enabled: false, url: 'http://localhost:8000', group: 'default' },
+  keys:       { openai: '', anthropic: '' },
+};
+
+export function loadConfig() {
+  let file = {};
+  try { file = JSON.parse(fs.readFileSync(CFG_PATH, 'utf8')); } catch { /* none yet */ }
+  const cfg = {
+    ...DEFAULTS, ...file,
+    capture: { ...DEFAULTS.capture, ...file.capture },
+    files: { ...DEFAULTS.files, ...file.files },
+    embeddings: { ...DEFAULTS.embeddings, ...file.embeddings },
+    llm: { ...DEFAULTS.llm, ...file.llm },
+    graph: { ...DEFAULTS.graph, ...file.graph },
+    keys: {
+      openai: process.env.OPENAI_API_KEY || file.keys?.openai || '',
+      anthropic: process.env.ANTHROPIC_API_KEY || file.keys?.anthropic || '',
+    },
+  };
+  // auto-upgrade: a key present means at least pro features are available
+  if (cfg.tier === 'free' && (cfg.keys.openai || cfg.keys.anthropic) && cfg.graph.enabled) cfg.tier = 'pro';
+  return cfg;
+}
+
+// Turn config into the injected pipeline dependencies.
+export function buildDeps(cfg = loadConfig()) {
+  let embed;
+  switch (cfg.embeddings.provider) {
+    case 'openai': embed = openaiEmbedder({ apiKey: cfg.keys.openai, model: cfg.embeddings.model || 'text-embedding-3-small' }); break;
+    case 'ollama': embed = ollamaEmbedder({ model: cfg.embeddings.model || 'nomic-embed-text' }); break;
+    case 'api':    embed = apiEmbedder({ apiKey: cfg.keys.openai, base: cfg.embeddings.base, model: cfg.embeddings.model }); break;
+    default:       embed = localEmbedder();
+  }
+
+  let llm = null;
+  if (cfg.llm.provider === 'openai') llm = llmClient({ provider: 'openai', apiKey: cfg.keys.openai, model: cfg.llm.model || 'gpt-4o-mini' });
+  else if (cfg.llm.provider === 'anthropic') llm = llmClient({ provider: 'anthropic', apiKey: cfg.keys.anthropic, model: cfg.llm.model || 'claude-sonnet-4-6' });
+  else if (cfg.llm.provider === 'ollama') llm = ollamaLLM({ model: cfg.llm.model || 'llama3.1' });
+
+  // Graph is a paid capability AND a technical one: it needs a frontier LLM.
+  const graphAllowed = cfg.graph.enabled && (cfg.llm.provider === 'openai' || cfg.llm.provider === 'anthropic');
+  const graph = graphAllowed ? graphClient(cfg.graph.url) : null;
+
+  return { embed, llm, graph, tier: cfg.tier, graphEnabled: graphAllowed };
+}
+
+export function redacted(cfg = loadConfig()) {
+  const mask = (k) => (k ? k.slice(0, 6) + '…' : '(unset)');
+  return { ...cfg, keys: { openai: mask(cfg.keys.openai), anthropic: mask(cfg.keys.anthropic) } };
+}

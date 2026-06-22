@@ -1,0 +1,9 @@
+{
+  "_comment": "Easiest: run `continuum mcp-config` to print this with the exact node + server paths already filled in for your machine. Otherwise replace <NODE> with the output of `which node` and <ABSOLUTE_PATH> with your continuum directory. Merge the 'continuum' block into ~/Library/Application Support/Claude/claude_desktop_config.json, then fully restart Claude Desktop and ask it: 'what was I working on?'",
+  "mcpServers": {
+    "continuum": {
+      "command": "<NODE>",
+      "args": ["<ABSOLUTE_PATH>/daemon/mcp-server.mjs"]
+    }
+  }
+}

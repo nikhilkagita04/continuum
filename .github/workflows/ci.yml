@@ -1,0 +1,15 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Unit + integration tests
+        run: npm test
+      - name: Build the macOS capture helper (compile check)
+        run: swiftc daemon/stage1/capture.swift -o /tmp/capture

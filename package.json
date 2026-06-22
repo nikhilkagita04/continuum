@@ -1,0 +1,61 @@
+{
+  "name": "continuum-core",
+  "version": "0.1.4",
+  "description": "Continuum — an open capture + memory layer for your computer. Capture everything you do (event-driven, on-device), segment it, index it, and selectively distill it into a temporal knowledge graph. A shovel: build your own use cases on top.",
+  "type": "module",
+  "bin": {
+    "continuum": "bin/continuum.mjs"
+  },
+  "exports": {
+    ".": "./daemon/pipeline.mjs",
+    "./segmenter": "./daemon/stage2/segmenter.mjs",
+    "./index": "./daemon/stage3/index.mjs",
+    "./distill": "./daemon/stage4/distill.mjs",
+    "./retrieval": "./daemon/retrieval.mjs",
+    "./adapters": "./daemon/adapters.mjs",
+    "./config": "./daemon/config.mjs"
+  },
+  "scripts": {
+    "test": "node daemon/stage2/segmenter.test.mjs && node daemon/stage3/index.test.mjs && node daemon/stage4/distill.test.mjs && node daemon/pipeline.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/store.test.mjs",
+    "verify": "node bin/continuum.mjs verify",
+    "build:capture": "swiftc daemon/stage1/capture.swift -o daemon/stage1/capture",
+    "build:app": "bash packaging/build-app.sh",
+    "start": "node bin/continuum.mjs start"
+  },
+  "author": "Nikhil Kagita",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nikhilkagita04/continuum.git"
+  },
+  "homepage": "https://github.com/nikhilkagita04/continuum#readme",
+  "bugs": {
+    "url": "https://github.com/nikhilkagita04/continuum/issues"
+  },
+  "keywords": [
+    "mcp",
+    "memory",
+    "context",
+    "local-first",
+    "macos",
+    "accessibility",
+    "knowledge-graph",
+    "ambient",
+    "agent",
+    "rag"
+  ],
+  "files": [
+    "bin",
+    "daemon/**/*.mjs",
+    "daemon/stage1/*.swift",
+    "examples",
+    "docs/assets",
+    "docs/architecture/ingestion-pipeline.md",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}
