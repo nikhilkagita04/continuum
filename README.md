@@ -2,16 +2,18 @@
 
 [![ci](https://github.com/nikhilkagita04/continuum/actions/workflows/ci.yml/badge.svg)](https://github.com/nikhilkagita04/continuum/actions/workflows/ci.yml)
 
-**Your computer has no memory. Continuum gives it one.**
+**Your computer has no memory.**
 
-You spend all day building context — the docs you read, the decision you made, the thread you
-followed. Then you switch apps and it's gone. You become a courier, copy-pasting your own
-background between tools, re-explaining yourself to every assistant.
+It runs your entire day — the docs you read, the decisions you made, the threads you followed —
+and remembers none of it. Every app is an island, so *you* become the memory: copy-pasting your
+own context from tool to tool, re-explaining yourself to every assistant.
 
-Continuum quietly remembers what you actually see — captured on your machine, in the background,
-private — and makes that memory available to any app or AI agent. Open source. Local-first. Yours.
+Continuum is the missing layer. It quietly remembers what you see — on your machine, private,
+yours — and hands that memory to any AI. Ask Claude *"what was I working on?"* and it actually knows.
 
-<p align="center"><img src="docs/assets/pipeline.svg" width="100%" alt="Continuum pipeline: capture → segment → index → distill"></p>
+Open source. Local-first. A primitive you build on.
+
+<p align="center"><img src="docs/assets/demo.gif" width="100%" alt="Ask Claude what you were working on — and it knows, from your own captured context"></p>
 
 ## Install — about 30 seconds
 
@@ -76,6 +78,8 @@ The graph tier needs a frontier model (local models can't do reliable entity ext
 it's the natural paid line. Everything below it is free and local.
 
 ## How it works
+
+<p align="center"><img src="docs/assets/pipeline.svg" width="100%" alt="capture → segment → index → distill"></p>
 
 Four stages turn ~29k raw daily events into ~30 LLM calls — and the LLM never touches the
 capture path, which is what keeps it light. Deep dive:
