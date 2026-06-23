@@ -2,14 +2,14 @@
 
 [![ci](https://github.com/nikhilkagita04/continuum/actions/workflows/ci.yml/badge.svg)](https://github.com/nikhilkagita04/continuum/actions/workflows/ci.yml)
 
-**Your computer has no memory.**
+**Context dies at the app boundary.**
 
-It runs your entire day — the docs you read, the decisions you made, the threads you followed —
-and remembers none of it. Every app is an island, so *you* become the memory: copy-pasting your
-own context from tool to tool, re-explaining yourself to every assistant.
+You bounce between Claude, Slack, X, Gemini, your design tool — a dozen apps a day — and each one
+starts blank. What you were just doing in one is invisible to the next, so *you* become the
+courier: re-pasting, re-explaining, rebuilding your context over and over.
 
-Continuum is the missing layer. It quietly remembers what you see — on your machine, private,
-yours — and hands that memory to any AI. Ask Claude *"what was I working on?"* and it actually knows.
+Continuum carries it across. It quietly remembers what you do in every app — on your machine,
+private, yours — so the next tool already knows. Ask Claude *"what was I just doing in X?"* and it does.
 
 Open source. Local-first. A primitive you build on.
 
