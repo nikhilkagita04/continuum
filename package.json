@@ -1,7 +1,7 @@
 {
   "name": "continuum-core",
   "version": "0.4.0",
-  "description": "Continuum — an open capture + memory layer for your computer. Capture everything you do (event-driven, on-device), segment it, index it, and selectively distill it into a temporal knowledge graph. A shovel: build your own use cases on top.",
+  "description": "Your whole desktop context — everything you've seen, read, typed, and heard — as a single MCP your agent can use. Open source, local-first, on-device.",
   "type": "module",
   "bin": {
     "continuum": "bin/continuum.mjs"
