@@ -34,6 +34,7 @@ const DEFAULTS = {
   llm:        { provider: 'none',  model: '' },      // none | ollama | openai | anthropic
   graph:      { enabled: false, url: 'http://localhost:8000', group: 'default' },
   keys:       { openai: '', anthropic: '' },
+  mcp:        { paused: false, sinceDays: 0 },        // agent access controls: pause, or limit to a recent window (0 = all)
 };
 
 export function loadConfig() {
@@ -46,6 +47,7 @@ export function loadConfig() {
     embeddings: { ...DEFAULTS.embeddings, ...file.embeddings },
     llm: { ...DEFAULTS.llm, ...file.llm },
     graph: { ...DEFAULTS.graph, ...file.graph },
+    mcp: { ...DEFAULTS.mcp, ...file.mcp },
     keys: {
       openai: process.env.OPENAI_API_KEY || file.keys?.openai || '',
       anthropic: process.env.ANTHROPIC_API_KEY || file.keys?.anthropic || '',
