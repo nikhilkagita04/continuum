@@ -8,6 +8,7 @@
 //   continuum dashboard       open the local timeline + search at http://localhost:3939
 //   continuum mcp             run the MCP server (point Claude Desktop / agents at this)
 //   continuum preferences     review + curate how your agents work for you
+//   continuum measure         retrieval/answer quality over your real captured memory
 //   continuum doctor          check the environment + resolved config
 //   continuum config          print resolved config (keys redacted)
 import { spawn, execFileSync } from 'node:child_process';
@@ -23,6 +24,7 @@ import { candidates, approve, dismiss, activePreferences } from '../daemon/prefe
 import { localEmbedder } from '../daemon/adapters.mjs';
 import { watchFiles } from '../daemon/stage1/files.mjs';
 import { runEval, formatReport } from '../daemon/eval/eval.mjs';
+import { runMeasure, formatScorecard } from '../daemon/eval/measure.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const STAGE1 = path.join(HERE, '..', 'daemon', 'stage1');
@@ -183,6 +185,12 @@ switch (cmd) {
   case 'doctor': doctor(); break;
   case 'config': console.log(JSON.stringify(redacted(), null, 2)); break;
   case 'eval': console.log(formatReport(await runEval())); break;       // capture/perception quality over local fixtures
+  case 'measure': {                                                     // retrieval/answer quality over YOUR real memory
+    const { embed, llm } = buildDeps();
+    console.error('measuring retrieval quality over your captured memory (writing probes + judging — a minute or two)…');
+    console.log(formatScorecard(await runMeasure({ embed, llm })));
+    break;
+  }
   case 'start': await start(); break;
   case 'dashboard': await import('../daemon/dashboard.mjs'); break;
   case 'mcp': await import('../daemon/mcp-server.mjs'); break;       // stdio JSON-RPC — do not print to stdout
@@ -205,5 +213,5 @@ switch (cmd) {
     break;
   }
   default:
-    console.log('continuum <verify|start|dashboard|mcp-install|preferences|doctor|config|eval>\n\n  verify        prove it works in 30s (no setup)\n  start         live capture → local store\n  dashboard     timeline + search at localhost:3939\n  mcp-install   add Continuum to Claude Desktop (one step)\n  mcp-config    print the MCP config (for other clients)\n  preferences   review + curate how your agents work for you\n  doctor        environment check\n  config        resolved config\n  eval          capture/perception quality over local fixtures');
+    console.log('continuum <verify|start|dashboard|mcp-install|preferences|measure|doctor|config|eval>\n\n  verify        prove it works in 30s (no setup)\n  start         live capture → local store\n  dashboard     timeline + search at localhost:3939\n  mcp-install   add Continuum to Claude Desktop (one step)\n  mcp-config    print the MCP config (for other clients)\n  preferences   review + curate how your agents work for you\n  measure       retrieval/answer quality over your real memory (needs a model)\n  doctor        environment check\n  config        resolved config\n  eval          capture/perception quality over local fixtures');
 }
