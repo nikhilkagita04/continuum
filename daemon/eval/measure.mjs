@@ -42,47 +42,46 @@ export async function judgeAnswer(q, sourceText, answer, snippets, llm) {
   return { correct: o.correct === true, grounded: o.grounded === true };
 }
 
-// Run the full measurement over the live store (or injected episodes/index for tests).
-export async function runMeasure({ n = 10, k = 5, embed, llm, episodes, index, now = 0 } = {}) {
-  episodes = episodes || loadEpisodes();
-  if (!llm) return { error: 'measurement needs a model to write probes and judge. Set up Ollama (free, local) or add an API key, then retry.' };
-  const usable = episodes.filter((e) => ((e.text || '').length > 80));
-  if (usable.length < 4) return { error: `not enough captured memory yet (${usable.length} usable episodes). Run \`continuum start\` for a while, then retry.` };
-  index = index || await loadIndex(embed);
-  const nowMs = now || episodes.reduce((m, e) => Math.max(m, e.end || e.start || 0), 0);
-
-  // Pick probe sources — favor salient, substantial, recent moments.
-  const sources = usable
+// Generate the probe set ONCE — questions written from the user's own salient moments, each paired
+// with the source episode it came from (ground truth). Reuse the same set across configs for a fair A/B.
+export async function generateProbes(episodes = [], llm, { n = 10 } = {}) {
+  const sources = episodes
+    .filter((e) => (e.text || '').length > 80)
     .sort((a, b) => (b.salience || 0) - (a.salience || 0) || (b.end || 0) - (a.end || 0))
     .slice(0, n * 2);
-
-  const rows = [];
+  const probes = [];
   for (const src of sources) {
-    if (rows.length >= n) break;
+    if (probes.length >= n) break;
     const q = await genProbe(src, llm);
-    if (!q) continue;
+    if (q) probes.push({ q, sourceId: src.content_hash, source: src });
+  }
+  return probes;
+}
 
+// Score a fixed probe set against ONE retrieval config (index) + judge. Returns the scorecard.
+export async function scoreProbes(probes = [], { index, llm, k = 5, now = 0 } = {}) {
+  const rows = [];
+  for (const p of probes) {
     const t0 = (globalThis.performance && performance.now) ? performance.now() : 0;
-    const hits = await index.search(q, { k, now: nowMs });
+    const hits = await index.search(p.q, { k, now });
     const latency = ((globalThis.performance && performance.now) ? performance.now() : 0) - t0;
 
-    const rank = hits.findIndex((h) => h.ep.content_hash === src.content_hash);
+    const rank = hits.findIndex((h) => h.ep.content_hash === p.sourceId);
     const snippets = hits.map((h) => h.ep.text).join('\n---\n').slice(0, 1200);
 
-    const withAns = await llm('Answer the question using ONLY this context from the user\'s activity. If it is not there, say you do not have it.', `Context:\n${snippets}\n\nQuestion: ${q}`, 160);
-    const withJ = await judgeAnswer(q, src.text, withAns, snippets, llm);
-    const withoutAns = await llm('Answer the question from general knowledge only. If this is about a specific user\'s private activity you cannot know, say you do not have it.', `Question: ${q}`, 160);
-    const withoutJ = await judgeAnswer(q, src.text, withoutAns, '', llm);
+    const withAns = await llm('Answer the question using ONLY this context from the user\'s activity. If it is not there, say you do not have it.', `Context:\n${snippets}\n\nQuestion: ${p.q}`, 160);
+    const withJ = await judgeAnswer(p.q, p.source.text, withAns, snippets, llm);
+    const withoutAns = await llm('Answer the question from general knowledge only. If this is about a specific user\'s private activity you cannot know, say you do not have it.', `Question: ${p.q}`, 160);
+    const withoutJ = await judgeAnswer(p.q, p.source.text, withoutAns, '', llm);
 
     rows.push({
-      q, sourceId: src.content_hash, app: src.app || 'Unknown', rank, latency,
+      q: p.q, app: (p.source.app) || 'Unknown', rank, latency,
       hit: rank >= 0 && rank < k, rr: rank >= 0 ? 1 / (rank + 1) : 0,
       correct: withJ.correct, grounded: withJ.grounded,
       necessary: withJ.correct && !withoutJ.correct,   // we got it right; the bare model did not
     });
   }
-
-  if (!rows.length) return { error: 'could not generate probes from the current memory — try again or capture more.' };
+  if (!rows.length) return { error: 'no probes scored.' };
   const mean = (f) => rows.reduce((s, r) => s + f(r), 0) / rows.length;
   const lat = rows.map((r) => r.latency);
   return {
@@ -94,6 +93,18 @@ export async function runMeasure({ n = 10, k = 5, embed, llm, episodes, index, n
     latencyMs: { p50: Math.round(pctile(lat, 0.5)), p95: Math.round(pctile(lat, 0.95)) },
     weakest: rows.filter((r) => !r.hit).slice(0, 5).map((r) => ({ q: r.q, app: r.app, rank: r.rank })),
   };
+}
+
+// Run the full measurement over the live store (or injected episodes/index for tests).
+export async function runMeasure({ n = 10, k = 5, embed, llm, episodes, index, now = 0 } = {}) {
+  episodes = episodes || loadEpisodes();
+  if (!llm) return { error: 'measurement needs a model to write probes and judge. Set up Ollama (free, local) or add an API key, then retry.' };
+  if (episodes.filter((e) => (e.text || '').length > 80).length < 4) return { error: `not enough captured memory yet. Run \`continuum start\` for a while, then retry.` };
+  const probes = await generateProbes(episodes, llm, { n });
+  if (!probes.length) return { error: 'could not generate probes from the current memory — try again or capture more.' };
+  index = index || await loadIndex(embed);
+  const nowMs = now || episodes.reduce((m, e) => Math.max(m, e.end || e.start || 0), 0);
+  return scoreProbes(probes, { index, llm, k, now: nowMs });
 }
 
 export function formatScorecard(r) {
