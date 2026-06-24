@@ -9,6 +9,7 @@ daemon/ax
 daemon/audio
 daemon/stage1/capture
 daemon/stage1/screen
+daemon/stage1/audio
 
 # packaging artifacts
 packaging/dist/
