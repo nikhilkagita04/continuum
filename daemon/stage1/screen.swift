@@ -13,6 +13,7 @@ import AppKit
 import Vision
 import CoreGraphics
 import ScreenCaptureKit
+import ApplicationServices
 
 // Apps we never capture (credential managers, etc.). Extend via CONTINUUM_EXCLUDE (comma-sep).
 let EXCLUDED: Set<String> = {
@@ -99,16 +100,44 @@ func ocr(_ image: CGImage) -> String {
   return kept.joined(separator: " ")
 }
 
+// --- AX focused-element capture (issue #1): the clean "user authored this" signal ---
+func axAttr(_ el: AXUIElement, _ a: String) -> CFTypeRef? {
+  var v: CFTypeRef?
+  return AXUIElementCopyAttributeValue(el, a as CFString, &v) == .success ? v : nil
+}
+func axStr(_ el: AXUIElement, _ a: String) -> String? { axAttr(el, a) as? String }
+
+// What the user is actively typing: the focused element's value (reply/email/message). Keyed on
+// focus+role (stable, no DOM scraping); reliable even in browsers where the rest of the tree is
+// flaky. Needs Accessibility permission; returns nil gracefully if not granted, so OCR is unaffected.
+func focusedInput() -> String? {
+  guard let app = NSWorkspace.shared.frontmostApplication, !EXCLUDED.contains(app.localizedName ?? "") else { return nil }
+  let axApp = AXUIElementCreateApplication(app.processIdentifier)
+  guard let v = axAttr(axApp, kAXFocusedUIElementAttribute as String), CFGetTypeID(v) == AXUIElementGetTypeID() else { return nil }
+  let focused = v as! AXUIElement
+  if axStr(focused, kAXRoleAttribute as String) == "AXSecureTextField" || axStr(focused, kAXSubroleAttribute as String) == "AXSecureTextField" { return nil }
+  guard let val = axAttr(focused, kAXValueAttribute as String) as? String else { return nil }
+  let t = val.trimmingCharacters(in: .whitespacesAndNewlines)
+  return t.count >= 4 ? t : nil
+}
+
 // Serializes captures and holds change-detection state.
 actor Capturer {
   var lastHash: UInt64 = 0
   var lastText = ""
   var lastWindow = ""
+  var lastInput = ""
   var busy = false
 
   func tick() async {
     if busy { return }
     busy = true; defer { busy = false }
+    // user-authored input (issue #1) — captured independent of OCR change-detection
+    if let input = focusedInput(), input != lastInput {
+      lastInput = input
+      let a = NSWorkspace.shared.frontmostApplication?.localizedName ?? "App"
+      emit(["t": nowMs(), "source": "input", "app": a, "window_id": "\(a)|input", "text": input])
+    }
     guard let (img, app, title) = await captureFocusedWindow() else { return }
     let wid = "\(app)|\(title)"
     let h = aHash(img)
@@ -136,6 +165,9 @@ app.setActivationPolicy(.accessory)   // background app, no Dock icon, no main w
 if !CGPreflightScreenCaptureAccess() {
   CGRequestScreenCaptureAccess()
   FileHandle.standardError.write("screen: grant Screen Recording (System Settings → Privacy → Screen Recording), then re-run.\n".data(using: .utf8)!)
+}
+if !AXIsProcessTrusted() {
+  FileHandle.standardError.write("screen: (optional) also grant Accessibility to capture what you type — System Settings → Privacy → Accessibility.\n".data(using: .utf8)!)
 }
 
 let interval = Double(ProcessInfo.processInfo.environment["CONTINUUM_OCR_INTERVAL"] ?? "2.5") ?? 2.5
