@@ -71,7 +71,9 @@ export const REGION_OWNERS = ['me', 'other', 'system', 'unknown'];
 
 function heuristicType(ep) {
   const app = (ep.app || '').toLowerCase(), t = (ep.text || '').toLowerCase();
-  if (/(claude|chatgpt|gemini|copilot|perplexity)/.test(app) || /\b(chatgpt|claude|ai assistant)\b/.test(t)) return 'ai-chat';
+  // ai-chat is keyed on the APP, not the content — merely mentioning "claude"/"AI" in text (a launch
+  // thread, our own logs) must NOT label an episode ai-chat (the over-firing the field read caught).
+  if (/(claude|chatgpt|gemini|copilot|perplexity)/.test(app)) return 'ai-chat';
   if (/(code|xcode|vim|emacs|terminal|iterm|jetbrains|intellij|pycharm|sublime|zed)/.test(app)) return 'document';
   if (/(word|docs|notion|obsidian|pages|notes|bear|craft)/.test(app)) return 'document';
   if (/(mail|gmail|outlook|slack|discord|messages|whatsapp|telegram|teams)/.test(app)) return 'message';

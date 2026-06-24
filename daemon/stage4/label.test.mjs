@@ -17,6 +17,12 @@ console.log('\nStage 2 semantic labeling\n');
 
   const seen = await labelEpisode({ app: 'Safari', text: 'reading an article on a news site' });
   ok('no authorship signal → owner unknown (never guesses other)', seen.label.owner === 'unknown', seen.label.owner);
+
+  // #2 over-firing fix: "claude"/"AI" in TEXT must not label ai-chat — only the app does
+  const term = await labelEpisode({ app: 'Terminal', text: 'running claude code and the continuum pipeline logs sal=' });
+  ok('terminal mentioning "claude" is NOT ai-chat (→ document)', term.label.type === 'document', term.label.type);
+  const claude = await labelEpisode({ app: 'Claude', text: 'a conversation about the design' });
+  ok('the Claude app → ai-chat', claude.label.type === 'ai-chat', claude.label.type);
 }
 
 // LLM path (constrained, validated)
