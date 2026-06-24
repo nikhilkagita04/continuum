@@ -23,6 +23,10 @@ let EXCLUDED: Set<String> = {
   return s
 }()
 
+// Skip Continuum's own surfaces (the dashboard page + the terminal running `continuum start`)
+// so it never captures itself. Matched on distinctive on-screen text.
+let SELF_MARKERS = ["What your machine captured", "continuum: tier=", "capture=screen embed="]
+
 func nowMs() -> Int { Int(Date().timeIntervalSince1970 * 1000) }
 func emit(_ obj: [String: Any]) {
   guard let d = try? JSONSerialization.data(withJSONObject: obj), let s = String(data: d, encoding: .utf8) else { return }
@@ -105,6 +109,7 @@ actor Capturer {
     lastWindow = wid; lastHash = h
     let text = ocr(img)
     if text.count < 20 || text == lastText { return }
+    if SELF_MARKERS.contains(where: { text.contains($0) }) { return }   // don't capture ourselves
     lastText = text
     var obj: [String: Any] = ["t": nowMs(), "source": "ocr", "app": app, "window_id": "\(app)|\(title)", "text": text]
     if !title.isEmpty { obj["title"] = title }
