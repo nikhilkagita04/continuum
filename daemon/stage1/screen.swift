@@ -121,6 +121,40 @@ func focusedInput() -> String? {
   return t.count >= 4 ? t : nil
 }
 
+// --- Stage 1 scene graph (#7): walk the focused window's accessibility tree into a hierarchical
+// region tree {role, text, children}. Additive — emitted as `scene` alongside the OCR `text`, so the
+// proven capture path is untouched and the pipeline (source-agnostic) keeps reading `text`. Where AX
+// is present this gives the structure a person perceives; where it's absent (gated Chromium/Electron)
+// the field is simply omitted and OCR remains the floor. Bounded (depth/breadth/node budget) to stay
+// within the recorder's cheap budget. Text is AX-extracted, never fabricated.
+func axChildren(_ el: AXUIElement) -> [AXUIElement] { (axAttr(el, kAXChildrenAttribute as String) as? [AXUIElement]) ?? [] }
+func axRole(_ el: AXUIElement) -> String { axStr(el, kAXRoleAttribute as String) ?? "" }
+func axNodeText(_ el: AXUIElement) -> String {
+  if let v = axAttr(el, kAXValueAttribute as String) as? String { return v }
+  return axStr(el, kAXTitleAttribute as String) ?? axStr(el, kAXDescriptionAttribute as String) ?? ""
+}
+func sceneTree(_ el: AXUIElement, _ depth: Int, _ budget: inout Int) -> [String: Any]? {
+  if budget <= 0 || depth > 12 { return nil }
+  budget -= 1
+  let role = axRole(el)
+  if role == "AXSecureTextField" { return nil }                       // never capture secure fields
+  let text = axNodeText(el).trimmingCharacters(in: .whitespacesAndNewlines)
+  var kids: [[String: Any]] = []
+  for c in axChildren(el).prefix(40) { if let n = sceneTree(c, depth + 1, &budget) { kids.append(n) } }
+  if kids.isEmpty && text.isEmpty && role != "AXWebArea" { return nil }  // prune empty leaves → signal-dense
+  var node: [String: Any] = ["role": role]
+  if !text.isEmpty { node["text"] = String(text.prefix(2000)) }
+  if !kids.isEmpty { node["children"] = kids }
+  return node
+}
+func focusedScene() -> [String: Any]? {
+  guard let app = NSWorkspace.shared.frontmostApplication, !EXCLUDED.contains(app.localizedName ?? "") else { return nil }
+  let axApp = AXUIElementCreateApplication(app.processIdentifier)
+  guard let w = axAttr(axApp, kAXFocusedWindowAttribute as String), CFGetTypeID(w) == AXUIElementGetTypeID() else { return nil }
+  var budget = 400
+  return sceneTree(w as! AXUIElement, 0, &budget)
+}
+
 // Serializes captures and holds change-detection state.
 actor Capturer {
   var lastHash: UInt64 = 0
@@ -152,6 +186,7 @@ actor Capturer {
     lastText = text
     var obj: [String: Any] = ["t": nowMs(), "source": "ocr", "app": app, "window_id": "\(app)|\(title)", "text": text]
     if !title.isEmpty { obj["title"] = title }
+    if AXIsProcessTrusted(), let scene = focusedScene() { obj["scene"] = scene }   // #7: hierarchy where AX exposes it
     emit(obj)
   }
 }
