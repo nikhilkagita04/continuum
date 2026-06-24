@@ -58,6 +58,13 @@ function mcpInstalled() {
   } catch { return false; }
 }
 
+// Recent agent queries from the MCP audit log — surfaced in Privacy so the human sees exactly what
+// their agent asked of their memory.
+function recentMcpQueries(n = 8) {
+  try { return fs.readFileSync(path.join(DATA_DIR, 'mcp-queries.log'), 'utf8').trim().split('\n').filter(Boolean).slice(-n).reverse().map((l) => JSON.parse(l)); }
+  catch { return []; }
+}
+
 function state() {
   const eps = loadEpisodes();
   return {
@@ -68,7 +75,7 @@ function state() {
     exclude: cfg().capture.exclude || [],
     apps: [...new Set(eps.map((e) => e.app || 'Unknown'))].sort(),
     sources: [...new Set(eps.flatMap((e) => e.source_mix || []))].sort(),
-    mcp: { claude: mcpInstalled() },
+    mcp: { claude: mcpInstalled(), queries: recentMcpQueries() },
     stats: computeStats(eps),
   };
 }
@@ -420,6 +427,8 @@ function renderPrivacy(){
       '<div class=addrow><select id=exsel>'+(opts||'<option value="">(no apps yet)</option>')+'</select><button class="btn solid" id=exadd>Exclude</button></div></div>'+
     '<div class=block><h3>Connect to Claude</h3><p>Let Claude read your memory over MCP.</p><div class=line><span class=k>Claude Desktop</span><span class="v'+(st.mcp.claude?' ok':'')+'">'+(st.mcp.claude?'connected':'not connected')+'</span></div>'+
       (st.mcp.claude?'':'<p style="margin-top:13px;margin-bottom:0">Run <code>continuum mcp-install</code>, then restart Claude.</p>')+'</div>'+
+    '<div class=block><h3>What your agent asked</h3><p>Every query an agent made to your memory — all on this Mac.</p>'+
+      ((st.mcp.queries&&st.mcp.queries.length)?'<div>'+st.mcp.queries.map(function(q){return '<div class=line><span class=k>'+esc(q.tool)+(q.detail?': '+esc(String(q.detail).slice(0,52)):'')+'</span><span class=v>'+esc(clock(q.t))+' &middot; '+(q.results||0)+'</span></div>';}).join('')+'</div>':'<p style="color:var(--faint);margin:0">No agent queries yet.</p>')+'</div>'+
     '<div class=block><h3>Your data</h3><p>Stored only on this machine. Delete anything, anytime — it&rsquo;s gone for good.</p>'+
       '<div class=btnrow><button class=btn data-clear=lasthour>Last hour</button><button class=btn data-clear=today>Today</button><button class="btn danger" data-clear=all>Everything</button></div>'+
       '<div class=line style="margin-top:16px"><span class=k>Location</span><span class=path>'+esc(st.dataDir)+'</span></div>'+
