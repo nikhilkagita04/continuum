@@ -94,8 +94,8 @@ before render; secure fields never captured upstream; the dashboard only reads t
 - **v1 — wishlist:** five views + scrubber + SSE + ⌘K. Too much.
 - **v2 — design crit:** cut to a focused 3-tab dashboard (Timeline/Ask/Control); fixed Ask's silent
   LLM-gating; dropped scrubber/SSE/salience-hiding; honest metrics. Still led with *browse*.
-- **v3 — answer-first:** reframed around *asking* (Perplexity × Rewind); Ask became the home,
-  Timeline/Control secondary; Linear/Raycast calm-dark. Closer — but still felt like an "app."
+- **v3 — answer-first:** reframed around *asking* — Ask became the home, Timeline/Control
+  secondary, in a calm dark aesthetic. Closer — but still felt like an "app."
 - **v4 — four aesthetic variants:** Beacon (launcher), Lens (editorial), Atlas (sidebar), Daylight
   (warm light) — in [`variants/`](variants/). Useful for comparison; all still read as SaaS.
 - **v5 — insights + ask (shipped):** the home should answer *for* you (insights) and *to* you (ask),

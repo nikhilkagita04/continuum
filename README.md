@@ -25,7 +25,7 @@ Codex, or Cursor** and it installs Continuum, starts capture, and connects the M
 > Set up Continuum so you can see my desktop context: install it (`npm i -g continuum-core`), start
 > capture in the background (`continuum start &` — I'll grant Screen Recording when macOS prompts),
 > then add the Continuum MCP server to your config using the JSON from `continuum mcp-config`. From
-> then on, use the `search_context` and `recent_activity` tools on your own judgment to understand
+> then on, use Continuum's tools (`recall`, `catch_up`, `profile`) on your own judgment to understand
 > what I'm building, how I think, and my taste — so your help fits me and my work, not only when I
 > explicitly ask about my activity.
 
@@ -96,17 +96,11 @@ open layer you build on:
   PII is redacted; nothing leaves your machine.
 - **Composable** — query it from the CLI, the SDK, or MCP, so any agent can use your memory.
 
-## Tiers
+## Free & local — or bring a model
 
-| | Free | Pro *(later)* | Enterprise *(later)* |
-|---|---|---|---|
-| Capture · recall · MCP | ✅ | ✅ | ✅ |
-| Preferences (learn your work style) | ✅ stated + auto-apply | ✅ + model-inferred | ✅ |
-| Embeddings / LLM | local, $0 | OpenAI / Anthropic | hosted |
-| Temporal knowledge graph | — | ✅ | ✅ team graph |
-
-The graph tier needs a frontier model (local models can't do reliable entity extraction), so
-it's the natural paid line. Everything below it is free and local.
+Works fully on-device for free (zero-setup hashed embeddings). Point it at **Ollama** (local) or add
+an **OpenAI / Anthropic** key for sharper embeddings, summaries, and inferred preferences; the
+optional temporal knowledge graph needs a frontier model.
 
 ## How it works
 
