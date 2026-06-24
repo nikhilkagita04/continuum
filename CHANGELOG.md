@@ -1,0 +1,38 @@
+# Changelog
+
+All notable changes. Dates are when the work landed; npm releases are tagged per version.
+
+## 0.3.1 — capture quality + audio (verified on real data)
+The round that made capture "see (and hear) the screen the way a person does."
+
+- **Audio capture (meetings).** Opt-in (`capture.audio: true`) on-device transcription of **two
+  channels** — your microphone (`you`) and system audio (`them`) — so speaker attribution is free, no
+  diarization model. Meeting-gated, **transcribe-then-delete** (raw audio is never written), and
+  **fused** with what's on screen into one multimodal episode. Verified live: a real call's audio
+  transcribed, speaker-tagged, and bound to the Chrome window in a single episode.
+- **Capture the whole window, drop the redundancy.** Whole-window capture (no more cropping) with a
+  **line-level novelty filter** — the bookmark bar is captured once as context, not re-encoded every
+  frame. Plus an OCR glyph-noise filter and a hard **episode-size cap**. Real-data impact:
+  unique-token ratio **45% → ~83%**, runaway episodes **17k tokens → capped**, self-capture **→ 0**.
+- **Silent capture.** `continuum start` no longer prints per-episode logs (which a terminal would OCR
+  back into a feedback loop); `CONTINUUM_VERBOSE=1` restores them.
+- **Grounded semantic labeling.** Every episode is tagged `type` (document / ai-chat / social-post /
+  message / …) and `owner` (me / other), keyed on the app — labels are a closed enum, never fabricated.
+- **`continuum eval` quality harness.** Measures OCR CER/WER, segmentation F1, grounding/hallucination
+  rate, and end-to-end recall over checked-in fixtures — so capture changes move a number, not a vibe.
+- Dashboard dark-mode text fix.
+
+## 0.3.0 — perception pipeline
+- The **Screen Scene Graph** design (`docs/architecture/perception.md`) and its staged build: eval
+  harness, AX scene-graph capture (additive), semantic labeling, cross-modal fusion, temporal
+  scene diffing, and the audio helper. Reviewed against the state of the art (AX-tree gating, on-device
+  vision-parser latency, MLLM hallucination) — OCR kept as the grounded floor, AX as an enricher.
+
+## 0.2.x — the dashboard
+- A new **Apple-minimal "insights + ask" dashboard** at `localhost:3939`: a daily digest of where your
+  time went + ask-your-memory with cited sources, Timeline and Privacy folded behind one menu, follows
+  the system light/dark. Near-monochrome, calm, zero-dependency.
+
+## 0.1.x — initial release
+- Capture → segment → index → distill pipeline; MCP server (`search_context`, `recent_activity`); CLI
+  (`verify` / `start` / `dashboard` / `mcp-install`); hashed local embeddings (zero-setup, on-device).

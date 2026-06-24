@@ -2,16 +2,16 @@
 
 [![ci](https://github.com/nikhilkagita04/continuum/actions/workflows/ci.yml/badge.svg)](https://github.com/nikhilkagita04/continuum/actions/workflows/ci.yml)
 
-**Context dies at the app boundary.**
+**Your whole desktop context — everything you've seen, read, typed, and heard — as a single MCP your agent can use.**
 
-You bounce between Claude, Slack, X, Gemini, your design tool — a dozen apps a day — and each one
-starts blank. What you were just doing in one is invisible to the next, so *you* become the
-courier: re-pasting, re-explaining, rebuilding your context over and over.
+You bounce between Claude, Slack, X, your editor, a call — a dozen apps a day — and each one starts
+blank, so *you* become the courier: re-pasting, re-explaining, rebuilding context over and over.
 
-Continuum carries it across. It quietly remembers what you do in every app — on your machine,
-private, yours — so the next tool already knows. Ask Claude *"what was I just doing in X?"* and it does.
+Continuum carries it across. It quietly remembers what happens in every app — on your machine,
+private, yours — and serves it to any agent over **MCP**. Ask Claude *"what was I just doing in X?"*
+and it already knows.
 
-Open source. Local-first. A primitive you build on.
+Open source. Local-first. One command to connect.
 
 <p align="center"><a href="https://youtu.be/WnltmAaom7E"><img src="docs/assets/demo.png" width="100%" alt="Ask Claude what you were doing in another app — and it answers from your captured context"></a></p>
 
@@ -41,20 +41,31 @@ continuum dashboard
 `start` captures what's on screen, on-device — grant **Screen Recording** once when macOS
 prompts. `dashboard` opens your searchable timeline at `localhost:3939`.
 
-## Connect it to Claude Desktop (MCP)
+## Connect it to your agent (MCP) — the payoff
 
-This is the payoff — Claude answers questions about what you've actually done. **Two steps:**
+Continuum speaks **MCP**, so any agent can query your desktop context. Pick the path that fits:
+
+**Claude Desktop — one command:**
 
 ```bash
-continuum mcp-install
+continuum mcp-install      # adds Continuum to Claude Desktop; your config is preserved + backed up
 ```
 
-1. Run that — it adds Continuum to Claude Desktop for you (no file editing, your existing
-   config is preserved and backed up).
-2. **Fully quit and reopen** Claude Desktop (Cmd+Q), then ask it *"what was I working on this morning?"*
+Then fully quit/reopen Claude (Cmd+Q) and ask *"what was I working on this morning?"*
 
-Keep `continuum start` running so there's something to recall. Using a different MCP client
-(Cursor, your own agent)? Run `continuum mcp-config` to print the config and add it yourself.
+**Any other client (Cursor, your own agent) — a 5-line block** (`continuum mcp-config` prints it):
+
+```json
+{ "mcpServers": { "continuum": { "command": "node", "args": [".../daemon/mcp-server.mjs"] } } }
+```
+
+**Or just hand it to a coding agent** — paste this into Claude Code / Codex / Cursor and it wires itself up:
+
+> Set up the Continuum MCP so you can see my desktop context: run `npm i -g continuum-core`, start
+> capture with `continuum start &`, then add the MCP server from `continuum mcp-config` to your
+> config. After that, use the `search_context` and `recent_activity` tools when I ask what I was doing.
+
+Keep `continuum start` running so there's something to recall.
 
 ## What it is
 
@@ -62,8 +73,10 @@ A **primitive, not an app.** Most context tools are either closed "brain" apps y
 everything to, or screen recorders that dump raw frames and leave you to dig. Continuum is the
 open layer you build on:
 
-- **Sees what you see** — on-device OCR of the focused window, captured only when the screen
-  changes (not continuous recording), so it's faithful without being a firehose.
+- **Sees what you see — and hears what you hear** — on-device OCR of the whole focused window
+  (captured only when it meaningfully changes, with repeated chrome de-duplicated so episodes are
+  content not noise), plus optional on-device meeting transcription (mic + system audio,
+  speaker-attributed, transcribe-then-delete) fused with what's on screen.
 - **Local-first** — everything lives in `~/.continuum`; credential managers are excluded and
   PII is redacted; nothing leaves your machine.
 - **Composable** — query it from the CLI, the SDK, or MCP, so any agent can use your memory.
@@ -99,5 +112,7 @@ npm test
 swiftc daemon/stage1/screen.swift -o daemon/stage1/screen
 ```
 
-`npm test` runs the 36-test suite (no network); the second line builds the macOS screen-capture
-helper. Contributions under [DCO](https://developercertificate.org/) (`git commit -s`). License: Apache-2.0.
+`npm test` runs the suite (no network); `continuum eval` reports capture-quality metrics (OCR
+fidelity, segmentation, grounding, end-to-end recall) over local fixtures. The second line builds the
+macOS screen-capture helper. Contributions under [DCO](https://developercertificate.org/)
+(`git commit -s`). License: Apache-2.0.

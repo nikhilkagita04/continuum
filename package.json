@@ -52,6 +52,7 @@
     "docs/assets",
     "docs/architecture/ingestion-pipeline.md",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "NOTICE"
   ],
