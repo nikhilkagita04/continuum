@@ -95,6 +95,7 @@ async function start() {
 
   const p = new Pipeline({
     embed: deps.embed,
+    segmenterOpts: { fuseAudio: cfg.capture.audio },   // #11: bind spoken utterances to the active visual segment
     onEpisode: (ep) => { appendEpisode(ep); console.error(`  episode [${ep.app}] ${ep.close_reason} sal=${ep.salience} ${ep.text.slice(0, 70)}…`); },
   });
 
@@ -113,6 +114,15 @@ async function start() {
     const env = { ...process.env, CONTINUUM_EXCLUDE: [process.env.CONTINUUM_EXCLUDE, ...cfg.capture.exclude].filter(Boolean).join(',') };
     const child = spawn(bin, [], { stdio: ['ignore', 'pipe', 'inherit'], env });
     createInterface({ input: child.stdout }).on('line', onLine);
+
+    if (cfg.capture.audio) {   // #10: opt-in meeting capture (mic + system audio), on-device, transcribe-then-delete
+      const abin = ensureHelper('audio');
+      if (abin) {
+        const ac = spawn(abin, [], { stdio: ['ignore', 'pipe', 'inherit'], env });
+        createInterface({ input: ac.stdout }).on('line', onLine);
+        console.error('  + audio capture on (meetings; on-device, transcribe-then-delete)');
+      }
+    }
   }
 
   if (cfg.files.watch.length) { watchFiles(cfg.files.watch, ingest); console.error(`  + watching files in: ${cfg.files.watch.join(', ')}`); }
@@ -147,5 +157,5 @@ switch (cmd) {
     break;
   }
   default:
-    console.log('continuum <verify|start|dashboard|mcp-install|doctor|config>\n\n  verify        prove it works in 30s (no setup)\n  start         live capture → local store\n  dashboard     timeline + search at localhost:3939\n  mcp-install   add Continuum to Claude Desktop (one step)\n  mcp-config    print the MCP config (for other clients)\n  doctor        environment check\n  config        resolved config');
+    console.log('continuum <verify|start|dashboard|mcp-install|doctor|config|eval>\n\n  verify        prove it works in 30s (no setup)\n  start         live capture → local store\n  dashboard     timeline + search at localhost:3939\n  mcp-install   add Continuum to Claude Desktop (one step)\n  mcp-config    print the MCP config (for other clients)\n  doctor        environment check\n  config        resolved config\n  eval          capture/perception quality over local fixtures');
 }

@@ -28,7 +28,7 @@ export function writeRawConfig(obj) { fs.mkdirSync(DATA_DIR, { recursive: true }
 
 const DEFAULTS = {
   tier: 'free',
-  capture:    { source: 'screen', exclude: [] },     // screen (OCR, universal) | ax (accessibility, native apps); exclude = apps to never capture
+  capture:    { source: 'screen', exclude: [], audio: false },  // screen (OCR) | ax; exclude = apps never captured; audio = capture meetings (on-device, opt-in)
   files:      { watch: [] },                          // dirs to capture writes from, e.g. ["~/Documents", "~/code"]
   embeddings: { provider: 'local', model: '' },     // local | ollama | openai | api
   llm:        { provider: 'none',  model: '' },      // none | ollama | openai | anthropic
