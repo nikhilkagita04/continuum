@@ -58,7 +58,7 @@ export function simhash(text) {
   return out;
 }
 export function hamming(a, b) { let x = a ^ b, c = 0; while (x) { c += Number(x & 1n); x >>= 1n; } return c; }
-const contentHash = (text) => fnv1a64(text).toString(16).padStart(16, '0');
+export const contentHash = (text) => fnv1a64(text).toString(16).padStart(16, '0');
 
 // ---------- bag-of-words cosine (default drift similarity) ----------
 function bow(text) { const m = new Map(); for (const t of tokens(text)) m.set(t, (m.get(t) || 0) + 1); return m; }

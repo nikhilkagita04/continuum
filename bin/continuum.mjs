@@ -25,6 +25,7 @@ import { localEmbedder } from '../daemon/adapters.mjs';
 import { watchFiles } from '../daemon/stage1/files.mjs';
 import { runEval, formatReport } from '../daemon/eval/eval.mjs';
 import { runMeasure, formatScorecard } from '../daemon/eval/measure.mjs';
+import { cleanStore, formatClean } from '../daemon/clean.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const STAGE1 = path.join(HERE, '..', 'daemon', 'stage1');
@@ -185,6 +186,11 @@ switch (cmd) {
   case 'doctor': doctor(); break;
   case 'config': console.log(JSON.stringify(redacted(), null, 2)); break;
   case 'eval': console.log(formatReport(await runEval())); break;       // capture/perception quality over local fixtures
+  case 'clean': {                                                       // salvage/delete polluted episodes in the store
+    const apply = process.argv.includes('--apply');
+    console.log(formatClean(cleanStore({ apply }), apply));
+    break;
+  }
   case 'measure': {                                                     // retrieval/answer quality over YOUR real memory
     const { embed, llm } = buildDeps();
     console.error('measuring retrieval quality over your captured memory (writing probes + judging — a minute or two)…');
@@ -213,5 +219,5 @@ switch (cmd) {
     break;
   }
   default:
-    console.log('continuum <verify|start|dashboard|mcp-install|preferences|measure|doctor|config|eval>\n\n  verify        prove it works in 30s (no setup)\n  start         live capture → local store\n  dashboard     timeline + search at localhost:3939\n  mcp-install   add Continuum to Claude Desktop (one step)\n  mcp-config    print the MCP config (for other clients)\n  preferences   review + curate how your agents work for you\n  measure       retrieval/answer quality over your real memory (needs a model)\n  doctor        environment check\n  config        resolved config\n  eval          capture/perception quality over local fixtures');
+    console.log('continuum <verify|start|dashboard|mcp-install|preferences|measure|clean|doctor|config|eval>\n\n  verify        prove it works in 30s (no setup)\n  start         live capture → local store\n  dashboard     timeline + search at localhost:3939\n  mcp-install   add Continuum to Claude Desktop (one step)\n  mcp-config    print the MCP config (for other clients)\n  preferences   review + curate how your agents work for you\n  measure       retrieval/answer quality over your real memory (needs a model)\n  clean         salvage/delete polluted episodes (--apply to write; backs up first)\n  doctor        environment check\n  config        resolved config\n  eval          capture/perception quality over local fixtures');
 }
