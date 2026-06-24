@@ -21,15 +21,26 @@ const ready = async () => { const m = mtime(); if (!index || m !== indexedAt) { 
 const TOOLS = [
   {
     name: 'search_context',
-    description: "Search the user's own captured activity and context by meaning. Use this to recall what the user was working on, reading, writing, or discussing.",
-    inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'what to look for' }, k: { type: 'number', description: 'max results (default 5)' } }, required: ['query'] },
+    description:
+      "Search the user's own recent on-device activity — everything they've seen, read, typed, or heard across ALL their apps (browser tabs, editor, terminal, chats, docs, calls). " +
+      "Call this proactively, on your own judgment, whenever the user's request might depend on something outside this conversation: they refer to \"that\" article / PR / error / email / person / design / doc, ask you to continue, summarize, or act on prior work, mention something they were \"just looking at\" or \"working on,\" or whenever grounding your answer in what they've actually been doing would make it more accurate or specific. " +
+      "Prefer searching here over asking the user to re-paste or re-explain context. Returns the most relevant captured moments, each tagged with the app it came from.",
+    inputSchema: { type: 'object', properties: { query: { type: 'string', description: 'what to look for, in natural language' }, k: { type: 'number', description: 'max results (default 5)' } }, required: ['query'] },
   },
   {
     name: 'recent_activity',
-    description: "List the user's most recent captured activity episodes, newest first.",
+    description:
+      "Get the user's most recent captured activity across their apps (newest first) — what they're working on, reading, and discussing right now. " +
+      "Call this to orient yourself before answering open-ended or context-dependent requests (\"help me with this,\" \"what should I do next,\" \"draft my standup,\" \"pick up where I left off\") where knowing the user's current focus makes your response better. Use search_context instead when you're looking for something specific.",
     inputSchema: { type: 'object', properties: { limit: { type: 'number', description: 'how many (default 10)' } } },
   },
 ];
+
+// Server-level guidance (surfaced to the client/agent): when to reach for this memory at all.
+const INSTRUCTIONS =
+  "Continuum exposes the user's own recent on-device activity — everything they've seen, read, typed, and heard across all their apps — as searchable memory. Treat it as an extension of your own context. " +
+  "Decide for yourself when consulting it would make your answer more accurate, specific, or grounded, and call these tools proactively in those cases — do NOT wait for the user to explicitly ask \"what was I doing.\" " +
+  "Whenever a request references something not present in this conversation, or would benefit from knowing what the user is currently working on, search Continuum before asking them to re-explain.";
 
 const send = (msg) => process.stdout.write(JSON.stringify(msg) + '\n');
 const text = (id, t) => ({ jsonrpc: '2.0', id, result: { content: [{ type: 'text', text: t }] } });
@@ -38,7 +49,7 @@ async function handle(req) {
   const { id, method, params } = req;
   switch (method) {
     case 'initialize':
-      return { jsonrpc: '2.0', id, result: { protocolVersion: params?.protocolVersion || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'continuum', version: '0.1.0' } } };
+      return { jsonrpc: '2.0', id, result: { protocolVersion: params?.protocolVersion || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'continuum', version: '0.4.0' }, instructions: INSTRUCTIONS } };
     case 'tools/list':
       return { jsonrpc: '2.0', id, result: { tools: TOOLS } };
     case 'tools/call': {
