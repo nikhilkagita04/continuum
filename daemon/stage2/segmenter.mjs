@@ -27,6 +27,20 @@ const shingles = (s) => { const t = tokens(s); if (t.length < 2) return t; const
 // oversized frame or a fast feedback burst (no episode can exceed ~maxTokens).
 const capWords = (s, max) => { const w = (s || '').split(/\s+/); return w.length > max ? w.slice(0, max).join(' ') : s; };
 
+// Same text field re-captured as it's edited: one string is ~a character-prefix of the other.
+// Progressive typing emits "Yes I thn" → "Yes I think this…" — SimHash misses it (the lengths differ
+// a lot), so detect the prefix-growth directly. Requires the shorter to be ≥8 chars and ≥80% a
+// leading prefix of the longer, so we only coalesce a genuinely-growing field, not two distinct lines.
+function growthOf(prev, next) {
+  if (!prev || !next || prev === next) return false;
+  const s = prev.length <= next.length ? prev : next;
+  const l = prev.length <= next.length ? next : prev;
+  if (s.length < 8) return false;
+  let i = 0; const n = s.length;
+  while (i < n && s.charCodeAt(i) === l.charCodeAt(i)) i++;
+  return i >= s.length * 0.8;
+}
+
 // ---------- 64-bit SimHash (FNV-1a) for near-duplicate detection ----------
 const MASK64 = 0xffffffffffffffffn;
 function fnv1a64(str) {
@@ -128,8 +142,23 @@ export class Segmenter {
     let seg = this.open.get(wid);
     if (!seg) { this.open.set(wid, this._new(ev, text, t)); return out; }
 
-    // 2) dedup cascade — near-duplicate? coalesce, don't branch
     const sh = simhash(text);
+
+    // 2a) progressive-typing coalesce — the same field re-OCR'd as it grows (short→long). SimHash
+    //     misses this, so detect char-prefix growth and REPLACE the prior version in place. Without
+    //     this, every keystroke stage piles up ("Yes I thn Yes I think…") and poisons the episode —
+    //     it was 19% of real captures and ~0.70 unique-token ratio.
+    if (growthOf(seg.lastText, text)) {
+      this._accrue(seg, t); seg.dedupCount++;
+      if (text.length > seg.lastText.length) {                 // grew → swap the prior version for the fuller one
+        const repl = capWords(text, this.cfg.maxTokens);
+        if (seg.text.endsWith(seg.lastText)) seg.text = seg.text.slice(0, seg.text.length - seg.lastText.length) + repl;
+        seg.lastText = repl; seg.simhash = simhash(repl); seg.tokens = tokens(seg.text).length;
+      }
+      return out;                                              // shorter/equal prefix → redundant, drop it
+    }
+
+    // 2) dedup cascade — near-duplicate? coalesce, don't branch
     if (text === seg.lastText || hamming(sh, seg.simhash) <= this.cfg.simhashNear) {
       this._accrue(seg, t);
       seg.dedupCount++;
