@@ -49,7 +49,8 @@ export function extractStated(episodes = []) {
   }
   return [...found.values()].map((c) => ({
     id: pid(c.text), text: c.text, kind: c.kind, source: 'stated',
-    confidence: Math.min(1, 0.4 + 0.12 * c.count + 0.2 * c.authoredHits), evidence: c.evidence,
+    confidence: Math.min(1, 0.4 + 0.12 * c.count + 0.2 * c.authoredHits),
+    authored: c.authoredHits, count: c.count, evidence: c.evidence,
   })).sort((a, b) => b.confidence - a.confidence);
 }
 
@@ -62,7 +63,7 @@ export async function extractInferred(episodes = [], llm) {
   try { raw = await llm('From these captured moments of ONE user, infer their standing PREFERENCES for how an AI agent should work for them (style, process, research depth, formatting, tools). Return ONLY a JSON array of {"text": the directive, "kind": one of style|process|research|code|format|tone}. 3-6 items, only what the moments actually support — do not invent. No prose.', sample, 400); } catch { return []; }
   let arr = [];
   try { arr = JSON.parse(raw.slice(raw.indexOf('['), raw.lastIndexOf(']') + 1)); } catch { return []; }
-  return (Array.isArray(arr) ? arr : []).filter((x) => x && x.text).slice(0, 6).map((x) => ({ id: pid(String(x.text)), text: String(x.text).slice(0, 160), kind: KINDS.has(x.kind) ? x.kind : 'style', source: 'inferred', confidence: 0.6, evidence: [] }));
+  return (Array.isArray(arr) ? arr : []).filter((x) => x && x.text).slice(0, 6).map((x) => ({ id: pid(String(x.text)), text: String(x.text).slice(0, 160), kind: KINDS.has(x.kind) ? x.kind : 'style', source: 'inferred', confidence: 0.6, authored: 0, count: 0, evidence: [] }));
 }
 
 // ---- curated store: { approved:[{id,text,kind,addedAt}], dismissed:[id] } ----
@@ -80,10 +81,30 @@ export function approve(pref) {
 export function dismiss(id) { const s = loadStore(); if (id && !s.dismissed.includes(id)) s.dismissed.push(id); s.approved = s.approved.filter((p) => p.id !== id); return saveStore(s); }
 export function removeApproved(id) { const s = loadStore(); s.approved = s.approved.filter((p) => p.id !== id); return saveStore(s); }
 
-// candidates = freshly extracted, minus what's already approved or dismissed.
+// Auto-apply tier: a STATED preference the user has themselves authored at least this many times
+// is applied automatically — no approval ceremony for things they've clearly, repeatedly told their
+// agent. Everything else (inferred, or stated only once / only seen on-screen) stays a suggestion.
+// Conservative on purpose: we silently change agent behavior only for the user's own repeated words.
+const AUTO_AUTHORED = 2;
+
+// activePreferences = what the agent actually applies: explicitly-approved prefs PLUS auto-applied
+// high-signal stated ones, minus anything the user has turned off (dismissed). Each tagged `applied`.
+export function activePreferences(episodes = [], store = loadStore()) {
+  const dismissed = new Set(store.dismissed);
+  const approvedIds = new Set(store.approved.map((p) => p.id));
+  const manual = store.approved.filter((p) => !dismissed.has(p.id)).map((p) => ({ id: p.id, text: p.text, kind: p.kind, applied: 'approved' }));
+  const auto = extractStated(episodes)
+    .filter((p) => p.source === 'stated' && p.authored >= AUTO_AUTHORED && !dismissed.has(p.id) && !approvedIds.has(p.id))
+    .map((p) => ({ id: p.id, text: p.text, kind: p.kind, applied: 'auto', confidence: p.confidence }));
+  const seen = new Set(); const out = [];
+  for (const p of [...manual, ...auto]) { if (seen.has(p.id)) continue; seen.add(p.id); out.push(p); }
+  return out;
+}
+
+// candidates = freshly extracted, minus what's already active (approved or auto-applied) or dismissed.
 export async function candidates(episodes = [], { llm } = {}) {
   const s = loadStore();
-  const have = new Set([...s.approved.map((p) => p.id), ...s.dismissed]);
+  const have = new Set([...activePreferences(episodes, s).map((p) => p.id), ...s.dismissed]);
   const seen = new Set(); const out = [];
   for (const c of [...extractStated(episodes), ...(await extractInferred(episodes, llm))]) {
     if (have.has(c.id) || seen.has(c.id)) continue;
@@ -92,8 +113,10 @@ export async function candidates(episodes = [], { llm } = {}) {
   return out.sort((a, b) => b.confidence - a.confidence).slice(0, 12);
 }
 
-// The block injected into the MCP initialize instructions — approved prefs the agent applies by default.
-export function instructionsBlock(approved = loadStore().approved) {
-  if (!approved || !approved.length) return '';
-  return 'How this user wants you to work (their standing preferences — apply them by default):\n' + approved.slice(0, 12).map((p) => `- ${p.text}`).join('\n');
+// The block injected into the MCP initialize instructions — the active prefs the agent applies by
+// default, plus an explicit instruction to apply them silently (no announcing, no asking).
+const SILENT = 'Apply these by default and silently — do not announce them or ask the user about them unless they bring it up.';
+export function instructionsBlock(active = activePreferences()) {
+  if (!active || !active.length) return '';
+  return 'How this user likes their agent to work (their standing preferences). ' + SILENT + '\n' + active.slice(0, 12).map((p) => `- ${p.text}`).join('\n');
 }

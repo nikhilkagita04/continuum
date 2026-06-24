@@ -10,7 +10,7 @@ import path from 'node:path';
 import { buildDeps, loadConfig, DATA_DIR } from './config.mjs';
 import { loadIndex, loadEpisodes, STORE_FILE } from './store.mjs';
 import { recall, catchUp, profile, snapshot } from './mcp.mjs';
-import { instructionsBlock } from './preferences.mjs';
+import { instructionsBlock, activePreferences } from './preferences.mjs';
 
 const { embed, llm } = buildDeps();
 const AUDIT = path.join(DATA_DIR, 'mcp-queries.log');
@@ -81,7 +81,7 @@ async function handle(req) {
       const { episodes: eps } = await ready();
       const { exclude } = scope();
       const snap = snapshot(eps, { exclude });
-      const prefs = instructionsBlock();                       // approved standing preferences, applied by default
+      const prefs = instructionsBlock(activePreferences(eps));  // active standing preferences (approved + auto-applied)
       const instructions = INSTRUCTIONS_BASE + (snap ? `\n\n${snap}` : '') + (prefs ? `\n\n${prefs}` : '');
       return { jsonrpc: '2.0', id, result: { protocolVersion: params?.protocolVersion || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'continuum', version: '0.6.0' }, instructions } };
     }
@@ -106,7 +106,11 @@ async function handle(req) {
       if (name === 'profile') {
         const p = await profile(eps, { ...args, llm, ...common });
         audit('profile', args.topic || '(general)', p.sources ? p.sources.length : 0);
-        return text(id, fmtProfile(p));
+        // Also surface active work-style prefs here — instructions are fixed at connect time, so this
+        // is how a long-running session picks up prefs the user approved after it started.
+        const active = activePreferences(eps);
+        const block = active.length ? '\n\nHow they want you to work (apply by default):\n' + active.map((x) => `- ${x.text}`).join('\n') : '';
+        return text(id, fmtProfile(p) + block);
       }
       return { jsonrpc: '2.0', id, error: { code: -32601, message: `unknown tool: ${name}` } };
     }

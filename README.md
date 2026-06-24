@@ -89,8 +89,9 @@ open layer you build on:
   speaker-attributed, transcribe-then-delete) fused with what's on screen.
 - **Learns how you want your agent to work** — the standing instructions you'd otherwise repeat
   every session ("be concise", "run the tests before the PR", "do lightweight research and cite
-  sources"). You approve them (in the dashboard or `continuum preferences`); they're then applied to
-  every agent automatically over MCP. Extracted free with no model; richer with one.
+  sources"). Things you've clearly stated more than once apply automatically; the rest wait for your
+  okay (dashboard or `continuum preferences`). Either way they ride into every agent over MCP and are
+  applied silently. Extracted free with no model; richer with one.
 - **Local-first** — everything lives in `~/.continuum`; credential managers are excluded and
   PII is redacted; nothing leaves your machine.
 - **Composable** — query it from the CLI, the SDK, or MCP, so any agent can use your memory.

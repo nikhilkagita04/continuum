@@ -10,7 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { buildDeps, loadConfig, DATA_DIR, readRawConfig, writeRawConfig } from './config.mjs';
 import { loadEpisodes, loadIndex, STORE_FILE, rewriteEpisodes } from './store.mjs';
-import { extractStated, extractInferred, loadStore as prefStore, approve as prefApprove, dismiss as prefDismiss, removeApproved as prefRemove } from './preferences.mjs';
+import { extractStated, extractInferred, activePreferences, loadStore as prefStore, approve as prefApprove, dismiss as prefDismiss, removeApproved as prefRemove } from './preferences.mjs';
 
 const { embed, llm } = buildDeps();
 const PAUSE = path.join(DATA_DIR, 'paused');
@@ -207,11 +207,12 @@ async function extractedPrefs() {
 }
 async function prefs() {
   const store = prefStore();
-  const have = new Set([...store.approved.map((p) => p.id), ...store.dismissed]);
+  const active = activePreferences(loadEpisodes(), store);     // approved + auto-applied, minus turned-off
+  const have = new Set([...active.map((p) => p.id), ...store.dismissed]);
   const seen = new Set(); const suggested = [];
   for (const c of await extractedPrefs()) { if (have.has(c.id) || seen.has(c.id)) continue; seen.add(c.id); suggested.push(c); }
   suggested.sort((a, b) => b.confidence - a.confidence);
-  return { active: store.approved, suggested: suggested.slice(0, 12), hasLLM: !!llm };
+  return { active, suggested: suggested.slice(0, 12), hasLLM: !!llm };
 }
 
 const HTML = `<!doctype html><html lang=en><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><title>Continuum</title>
@@ -470,29 +471,32 @@ function renderPrivacy(){
 
 /* ---------- PREFERENCES: how your agents work for you ---------- */
 function loadPrefs(){return getJSON('/api/preferences').then(function(d){S.prefs=d;if(S.view==='preferences')renderPrefs();});}
+function prefEditor(p){
+  return '<div class=pref><input class=pedit id=pedit value="'+esc(p.text)+'">'+
+    '<div class=pbtns><button class="btn solid" data-pref-save="'+esc(p.id)+'" data-kind="'+esc(p.kind)+'">Save</button><button class=btn data-pref-canceledit=1>Cancel</button></div></div>';
+}
 function prefActive(p){
-  return '<div class=pref><div class=pbody><div class=pt>'+esc(p.text)+'</div><div class=pm>'+esc(p.kind)+'</div></div>'+
-    '<div class=pbtns><button class=btn data-pref-remove="'+esc(p.id)+'">Remove</button></div></div>';
+  if(S.editPref===p.id)return prefEditor(p);
+  var tag=p.applied==='auto'?'Auto-applied':'Approved';
+  return '<div class=pref><div class=pbody><div class=pt>'+esc(p.text)+'</div><div class=pm>'+esc(p.kind)+' &middot; '+tag+'</div></div>'+
+    '<div class=pbtns><button class=btn data-pref-edit="'+esc(p.id)+'">Edit</button><button class=btn data-pref-dismiss="'+esc(p.id)+'">Turn off</button></div></div>';
 }
 function prefSuggest(p){
-  if(S.editPref===p.id){
-    return '<div class=pref><input class=pedit id=pedit value="'+esc(p.text)+'">'+
-      '<div class=pbtns><button class="btn solid" data-pref-save="'+esc(p.id)+'" data-kind="'+esc(p.kind)+'">Save</button><button class=btn data-pref-canceledit=1>Cancel</button></div></div>';
-  }
+  if(S.editPref===p.id)return prefEditor(p);
   return '<div class=pref><div class=pbody><div class=pt>'+esc(p.text)+'</div>'+
     '<div class=pm>'+esc(p.kind)+' &middot; '+Math.round(p.confidence*100)+'% &middot; '+esc(p.source)+'</div></div>'+
     '<div class=pbtns><button class="btn solid" data-pref-approve="'+esc(p.id)+'">Approve</button><button class=btn data-pref-edit="'+esc(p.id)+'">Edit</button><button class=btn data-pref-dismiss="'+esc(p.id)+'">Dismiss</button></div></div>';
 }
 function renderPrefs(){
   var head='<button class=back id=back>'+ICON.back+'Today</button>'+
-    '<div class=vh>Preferences</div><div class=vsub>How your agents work for you. Learned from your activity &mdash; nothing applies until you approve it.</div>';
+    '<div class=vh>Preferences</div><div class=vsub>How your agents work for you. Learned from your activity &mdash; things you&rsquo;ve clearly stated apply automatically; everything else waits for your okay. Applied silently, never in the chat.</div>';
   var d=S.prefs;
   if(!d){main.innerHTML=head+'<div class=muted style="padding:22px 0">Loading&hellip;</div>';loadPrefs();return;}
-  var active=d.active.length?('<div class=plist>'+d.active.map(prefActive).join('')+'</div>'):'<p>None yet. Approve a suggestion below and every agent will apply it by default.</p>';
+  var active=d.active.length?('<div class=plist>'+d.active.map(prefActive).join('')+'</div>'):'<p>Nothing active yet. Approve a suggestion below &mdash; or just keep working, and preferences you state repeatedly turn on by themselves.</p>';
   var sugg=d.suggested.length?('<div class=plist>'+d.suggested.map(prefSuggest).join('')+'</div>'):'<p style="color:var(--faint);margin:0">Nothing new right now. Keep working &mdash; Continuum learns as you go.</p>';
   main.innerHTML=head+
-    '<div class=block><h3>Active</h3><p>Applied by default in every agent session, over MCP.</p>'+active+'</div>'+
-    '<div class=block><h3>Suggested</h3><p>'+(d.hasLLM?'Learned from what you&rsquo;ve said and how you work.':'Learned from what you&rsquo;ve said. Connect a model in Privacy &amp; data to also infer preferences from how you work.')+'</p>'+sugg+'</div>';
+    '<div class=block><h3>Active</h3><p>Applied by default in every agent session, over MCP. <b>Auto-applied</b> ones were learned from things you&rsquo;ve said more than once &mdash; turn any off anytime.</p>'+active+'</div>'+
+    '<div class=block><h3>Suggested</h3><p>'+(d.hasLLM?'Learned from what you&rsquo;ve said and how you work. Approve to apply.':'Learned from what you&rsquo;ve said. Connect a model in Privacy &amp; data to also infer preferences from how you work.')+'</p>'+sugg+'</div>';
 }
 
 /* ---------- shell ---------- */
@@ -528,9 +532,8 @@ main.addEventListener('click',function(e){
   var pa=t.closest('[data-pref-approve]');if(pa){var paf=(S.prefs.suggested||[]).filter(function(x){return x.id===pa.dataset.prefApprove;})[0];if(paf)send('/api/preferences/approve','POST',{text:paf.text,kind:paf.kind}).then(function(d){S.prefs=d;renderPrefs();});return;}
   var pe=t.closest('[data-pref-edit]');if(pe){S.editPref=pe.dataset.prefEdit;renderPrefs();var pi=document.getElementById('pedit');if(pi){pi.focus();pi.setSelectionRange(pi.value.length,pi.value.length);}return;}
   if(t.closest('[data-pref-canceledit]')){S.editPref=null;renderPrefs();return;}
-  var psv=t.closest('[data-pref-save]');if(psv){var inp=document.getElementById('pedit'),nv=inp?inp.value.trim():'',orig=(S.prefs.suggested||[]).filter(function(x){return x.id===psv.dataset.prefSave;})[0];if(nv){var bd={text:nv,kind:psv.dataset.kind};if(orig&&nv!==orig.text)bd.from=psv.dataset.prefSave;send('/api/preferences/approve','POST',bd).then(function(d){S.editPref=null;S.prefs=d;renderPrefs();});}return;}
+  var psv=t.closest('[data-pref-save]');if(psv){var inp=document.getElementById('pedit'),nv=inp?inp.value.trim():'',orig=((S.prefs.suggested||[]).concat(S.prefs.active||[])).filter(function(x){return x.id===psv.dataset.prefSave;})[0];if(nv){var bd={text:nv,kind:psv.dataset.kind};if(orig&&nv!==orig.text)bd.from=psv.dataset.prefSave;send('/api/preferences/approve','POST',bd).then(function(d){S.editPref=null;S.prefs=d;renderPrefs();});}return;}
   var pds=t.closest('[data-pref-dismiss]');if(pds){send('/api/preferences/dismiss','POST',{id:pds.dataset.prefDismiss}).then(function(d){S.prefs=d;renderPrefs();});return;}
-  var prm=t.closest('[data-pref-remove]');if(prm){send('/api/preferences/remove','POST',{id:prm.dataset.prefRemove}).then(function(d){S.prefs=d;renderPrefs();});return;}
   var rowEl=t.closest('.row');if(rowEl&&rowEl.dataset.hash){S.open[rowEl.dataset.hash]=!S.open[rowEl.dataset.hash];if(S.view==='timeline')loadRows();else if(S.result)renderResult();else renderInsights();return;}
 });
 main.addEventListener('input',function(e){if(e.target.id==='q'){clearTimeout(S._t);S.facet.q=e.target.value;S._t=setTimeout(loadRows,200);}else if(e.target.id==='ask'){S.query=e.target.value;}});

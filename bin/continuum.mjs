@@ -19,7 +19,7 @@ import path from 'node:path';
 import { loadConfig, buildDeps, redacted, DATA_DIR } from '../daemon/config.mjs';
 import { Pipeline } from '../daemon/pipeline.mjs';
 import { appendEpisode, loadEpisodes } from '../daemon/store.mjs';
-import { candidates, approve, dismiss, removeApproved, loadStore } from '../daemon/preferences.mjs';
+import { candidates, approve, dismiss, activePreferences } from '../daemon/preferences.mjs';
 import { localEmbedder } from '../daemon/adapters.mjs';
 import { watchFiles } from '../daemon/stage1/files.mjs';
 import { runEval, formatReport } from '../daemon/eval/eval.mjs';
@@ -137,17 +137,18 @@ async function start() {
 }
 
 // continuum preferences — review how the agent has learned you want it to work, and curate it.
-// Nothing applies until you approve it; approved prefs ride into every agent via the MCP instructions.
+// Preferences you've clearly stated apply automatically; the rest wait for your okay. Active prefs
+// ride into every agent via the MCP instructions, applied silently.
 async function preferences() {
   const sub = process.argv[3];
   const arg = process.argv[4];
-  if (sub === 'approve' || sub === 'dismiss' || sub === 'remove') {
+  if (sub === 'approve' || sub === 'dismiss' || sub === 'off' || sub === 'remove') {
     if (!arg) { console.log(`usage: continuum preferences ${sub} <number|id>`); return; }
-    if (sub === 'remove') {
-      const active = loadStore().approved;
+    if (sub === 'off' || sub === 'remove') {                   // turn off an active one (won't reapply)
+      const active = activePreferences(loadEpisodes());
       const p = /^\d+$/.test(arg) ? active[+arg - 1] : active.find((x) => x.id === arg);
-      if (!p) { console.log('no such active preference.'); return; }
-      removeApproved(p.id); console.log(`✓ removed: ${p.text}`);
+      if (!p) { console.log('no such active preference — run `continuum preferences`.'); return; }
+      dismiss(p.id); console.log(`✓ turned off: ${p.text}`);
       return;
     }
     const { llm } = buildDeps();
@@ -160,18 +161,19 @@ async function preferences() {
   }
   // default: list active + suggested
   const { llm } = buildDeps();
-  const active = loadStore().approved;
-  const cands = await candidates(loadEpisodes(), { llm });
+  const eps = loadEpisodes();
+  const active = activePreferences(eps);
+  const cands = await candidates(eps, { llm });
   console.log('continuum preferences — how your agents work for you\n');
-  console.log('Active (applied by default in every agent session):');
-  if (active.length) active.forEach((p, i) => console.log(`  ${i + 1}. ${p.text}  ·  ${p.kind}`));
-  else console.log('  (none yet — approve a suggestion below)');
-  console.log('\nSuggested (learned from your activity — nothing applies until you approve):');
+  console.log('Active (applied by default in every agent session, silently):');
+  if (active.length) active.forEach((p, i) => console.log(`  ${i + 1}. ${p.text}  ·  ${p.kind} · ${p.applied === 'auto' ? 'auto-applied' : 'approved'}`));
+  else console.log('  (none yet — approve a suggestion, or state a preference a couple of times and it turns on by itself)');
+  console.log('\nSuggested (learned from your activity — approve to apply):');
   if (cands.length) cands.forEach((p, i) => console.log(`  ${i + 1}. ${p.text}  ·  ${p.kind} · ${Math.round(p.confidence * 100)}% · ${p.source}`));
   else console.log('  (nothing new — keep working, or curate in the dashboard)');
   console.log('\n  continuum preferences approve <number>    apply a suggestion');
   console.log('  continuum preferences dismiss <number>    hide a suggestion');
-  console.log('  continuum preferences remove  <number>    stop applying an active one');
+  console.log('  continuum preferences off     <number>    turn off an active one (won\'t reapply)');
   console.log('  (or curate visually in the dashboard → Preferences)');
 }
 
