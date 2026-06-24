@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { buildDeps, loadConfig, DATA_DIR, readRawConfig, writeRawConfig } from './config.mjs';
 import { loadEpisodes, loadIndex, STORE_FILE, rewriteEpisodes } from './store.mjs';
+import { extractStated, extractInferred, loadStore as prefStore, approve as prefApprove, dismiss as prefDismiss, removeApproved as prefRemove } from './preferences.mjs';
 
 const { embed, llm } = buildDeps();
 const PAUSE = path.join(DATA_DIR, 'paused');
@@ -188,8 +189,29 @@ function clear(scope) {
   else { const t0 = scope === 'lasthour' ? Date.now() - 3600e3 : startOfToday(); keep = (e) => (e.end || e.start || 0) < t0; }
   const before = loadEpisodes().length;
   const remaining = rewriteEpisodes(keep);
-  indexedAt = -1; _insAt = -1;
+  indexedAt = -1; _insAt = -1; _candsAt = -1;
   return { removed: before - remaining, remaining };
+}
+
+// ---- preferences: how the user wants their agents to work (learn → curate → auto-apply) ----
+// The raw extraction (stated + an optional model pass) is the costly part, so cache it by store
+// mtime; the cheap approved/dismissed filtering runs fresh each call against the curated store.
+let _cands = null, _candsAt = -1;
+async function extractedPrefs() {
+  const m = mtime();
+  if (_cands && m === _candsAt) return _cands;
+  const eps = loadEpisodes();
+  _cands = [...extractStated(eps), ...(await extractInferred(eps, llm))];
+  _candsAt = m;
+  return _cands;
+}
+async function prefs() {
+  const store = prefStore();
+  const have = new Set([...store.approved.map((p) => p.id), ...store.dismissed]);
+  const seen = new Set(); const suggested = [];
+  for (const c of await extractedPrefs()) { if (have.has(c.id) || seen.has(c.id)) continue; seen.add(c.id); suggested.push(c); }
+  suggested.sort((a, b) => b.confidence - a.confidence);
+  return { active: store.approved, suggested: suggested.slice(0, 12), hasLLM: !!llm };
 }
 
 const HTML = `<!doctype html><html lang=en><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><title>Continuum</title>
@@ -309,6 +331,16 @@ main{max-width:600px;margin:0 auto;padding:0 24px 96px;animation:rise .5s var(--
 .mi .sub{margin-left:auto;font-size:12px;color:var(--faint)}
 .mi .sub.ok{color:var(--green)}
 .sheet .div{height:1px;background:var(--line);margin:6px 8px}
+.plist{margin-top:4px}
+.pref{display:flex;align-items:center;gap:14px;padding:16px 0;border-top:1px solid var(--line)}
+.plist .pref:first-child{border-top:none}
+.pbody{flex:1;min-width:0}
+.pt{font-size:16px;letter-spacing:-.011em;line-height:1.4}
+.pm{margin-top:4px;font-size:13px;color:var(--sec);text-transform:capitalize}
+.pbtns{display:flex;gap:7px;flex:none}
+.pbtns .btn{padding:8px 13px}
+.pedit{flex:1;min-width:0;font:inherit;font-size:16px;color:var(--fg);background:var(--card);border:1px solid var(--line);border-radius:11px;padding:11px 13px;outline:none}
+.pedit:focus{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 15%,transparent)}
 </style></head>
 <body>
 <div class=top>
@@ -325,6 +357,7 @@ main{max-width:600px;margin:0 auto;padding:0 24px 96px;animation:rise .5s var(--
 <div class=scrim id=scrim></div>
 <div class=sheet id=sheet>
   <button class=mi data-go=timeline><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=1.7 stroke-linecap=round stroke-linejoin=round><circle cx=12 cy=12 r="9"/><path d="M12 7v5l3 2"/></svg>Timeline<span class=sub>all moments</span></button>
+  <button class=mi data-go=preferences><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=1.7 stroke-linecap=round stroke-linejoin=round><path d="M4 7h9M19 7h1M4 12h1M10 12h10M4 17h6M16 17h4"/><circle cx="16" cy="7" r="2"/><circle cx="7" cy="12" r="2"/><circle cx="13" cy="17" r="2"/></svg>Preferences<span class=sub>for agents</span></button>
   <button class=mi data-go=privacy><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=1.7 stroke-linecap=round stroke-linejoin=round><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>Privacy &amp; data</button>
   <div class=div></div>
   <button class=mi data-go=privacy id=mcprow><svg viewBox="0 0 24 24" fill=none stroke=currentColor stroke-width=1.7 stroke-linecap=round stroke-linejoin=round><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/><path d="M9 21h6"/></svg>Connect to Claude<span class=sub id=mcpsub>MCP</span></button>
@@ -341,7 +374,7 @@ var ICON={
 };
 var SRC={ocr:'screen',screen:'screen',input:'typed',ax:'app',file:'file',clipboard:'clip',audio:'audio'};
 var root=document.documentElement,main=document.getElementById('main');
-var S={view:'home',state:null,ins:null,result:null,query:'',facet:{q:''},open:{}};
+var S={view:'home',state:null,ins:null,result:null,query:'',facet:{q:''},open:{},prefs:null,editPref:null};
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function clock(ms){if(!ms)return'';return new Date(ms).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});}
 function dur(ms){var m=Math.round(ms/60000);if(m<1)return'<1m';if(m<60)return m+'m';var h=Math.floor(m/60);return h+'h '+(m%60)+'m';}
@@ -435,10 +468,37 @@ function renderPrivacy(){
       '<div class=line><span class=k>Total captured</span><span class=v>'+st.stats.total+' moments</span></div></div>';
 }
 
+/* ---------- PREFERENCES: how your agents work for you ---------- */
+function loadPrefs(){return getJSON('/api/preferences').then(function(d){S.prefs=d;if(S.view==='preferences')renderPrefs();});}
+function prefActive(p){
+  return '<div class=pref><div class=pbody><div class=pt>'+esc(p.text)+'</div><div class=pm>'+esc(p.kind)+'</div></div>'+
+    '<div class=pbtns><button class=btn data-pref-remove="'+esc(p.id)+'">Remove</button></div></div>';
+}
+function prefSuggest(p){
+  if(S.editPref===p.id){
+    return '<div class=pref><input class=pedit id=pedit value="'+esc(p.text)+'">'+
+      '<div class=pbtns><button class="btn solid" data-pref-save="'+esc(p.id)+'" data-kind="'+esc(p.kind)+'">Save</button><button class=btn data-pref-canceledit=1>Cancel</button></div></div>';
+  }
+  return '<div class=pref><div class=pbody><div class=pt>'+esc(p.text)+'</div>'+
+    '<div class=pm>'+esc(p.kind)+' &middot; '+Math.round(p.confidence*100)+'% &middot; '+esc(p.source)+'</div></div>'+
+    '<div class=pbtns><button class="btn solid" data-pref-approve="'+esc(p.id)+'">Approve</button><button class=btn data-pref-edit="'+esc(p.id)+'">Edit</button><button class=btn data-pref-dismiss="'+esc(p.id)+'">Dismiss</button></div></div>';
+}
+function renderPrefs(){
+  var head='<button class=back id=back>'+ICON.back+'Today</button>'+
+    '<div class=vh>Preferences</div><div class=vsub>How your agents work for you. Learned from your activity &mdash; nothing applies until you approve it.</div>';
+  var d=S.prefs;
+  if(!d){main.innerHTML=head+'<div class=muted style="padding:22px 0">Loading&hellip;</div>';loadPrefs();return;}
+  var active=d.active.length?('<div class=plist>'+d.active.map(prefActive).join('')+'</div>'):'<p>None yet. Approve a suggestion below and every agent will apply it by default.</p>';
+  var sugg=d.suggested.length?('<div class=plist>'+d.suggested.map(prefSuggest).join('')+'</div>'):'<p style="color:var(--faint);margin:0">Nothing new right now. Keep working &mdash; Continuum learns as you go.</p>';
+  main.innerHTML=head+
+    '<div class=block><h3>Active</h3><p>Applied by default in every agent session, over MCP.</p>'+active+'</div>'+
+    '<div class=block><h3>Suggested</h3><p>'+(d.hasLLM?'Learned from what you&rsquo;ve said and how you work.':'Learned from what you&rsquo;ve said. Connect a model in Privacy &amp; data to also infer preferences from how you work.')+'</p>'+sugg+'</div>';
+}
+
 /* ---------- shell ---------- */
-function render(){if(S.view==='home')renderHome();else if(S.view==='timeline')renderTimeline();else renderPrivacy();}
-function go(v){S.view=v;closeMenu();render();}
-function home(){S.view='home';S.result=null;S.query='';render();}
+function render(){if(S.view==='home')renderHome();else if(S.view==='timeline')renderTimeline();else if(S.view==='preferences')renderPrefs();else renderPrivacy();}
+function go(v){S.view=v;S.editPref=null;if(v==='preferences')S.prefs=null;closeMenu();render();}
+function home(){S.view='home';S.result=null;S.query='';S.editPref=null;render();}
 
 /* theme: follow system unless overridden; persisted */
 function effective(){var t=root.dataset.theme;if(t)return t;return matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';}
@@ -465,10 +525,16 @@ main.addEventListener('click',function(e){
   var ex=t.closest('#exadd');if(ex){var v=document.getElementById('exsel').value;if(v)send('/api/exclude','POST',{app:v}).then(function(){loadState(true);});return;}
   var ux=t.closest('[data-unexcl]');if(ux){send('/api/exclude','POST',{app:ux.dataset.unexcl,remove:true}).then(function(){loadState(true);});return;}
   var cl=t.closest('[data-clear]');if(cl){var sc=cl.dataset.clear,lbl=sc==='all'?'everything':sc==='today'?"today's memory":'the last hour';if(confirm('Delete '+lbl+'? This cannot be undone.'))send('/api/clear','POST',{scope:sc}).then(function(){loadState(true);});return;}
+  var pa=t.closest('[data-pref-approve]');if(pa){var paf=(S.prefs.suggested||[]).filter(function(x){return x.id===pa.dataset.prefApprove;})[0];if(paf)send('/api/preferences/approve','POST',{text:paf.text,kind:paf.kind}).then(function(d){S.prefs=d;renderPrefs();});return;}
+  var pe=t.closest('[data-pref-edit]');if(pe){S.editPref=pe.dataset.prefEdit;renderPrefs();var pi=document.getElementById('pedit');if(pi){pi.focus();pi.setSelectionRange(pi.value.length,pi.value.length);}return;}
+  if(t.closest('[data-pref-canceledit]')){S.editPref=null;renderPrefs();return;}
+  var psv=t.closest('[data-pref-save]');if(psv){var inp=document.getElementById('pedit'),nv=inp?inp.value.trim():'',orig=(S.prefs.suggested||[]).filter(function(x){return x.id===psv.dataset.prefSave;})[0];if(nv){var bd={text:nv,kind:psv.dataset.kind};if(orig&&nv!==orig.text)bd.from=psv.dataset.prefSave;send('/api/preferences/approve','POST',bd).then(function(d){S.editPref=null;S.prefs=d;renderPrefs();});}return;}
+  var pds=t.closest('[data-pref-dismiss]');if(pds){send('/api/preferences/dismiss','POST',{id:pds.dataset.prefDismiss}).then(function(d){S.prefs=d;renderPrefs();});return;}
+  var prm=t.closest('[data-pref-remove]');if(prm){send('/api/preferences/remove','POST',{id:prm.dataset.prefRemove}).then(function(d){S.prefs=d;renderPrefs();});return;}
   var rowEl=t.closest('.row');if(rowEl&&rowEl.dataset.hash){S.open[rowEl.dataset.hash]=!S.open[rowEl.dataset.hash];if(S.view==='timeline')loadRows();else if(S.result)renderResult();else renderInsights();return;}
 });
 main.addEventListener('input',function(e){if(e.target.id==='q'){clearTimeout(S._t);S.facet.q=e.target.value;S._t=setTimeout(loadRows,200);}else if(e.target.id==='ask'){S.query=e.target.value;}});
-main.addEventListener('keydown',function(e){if(e.target.id==='ask'&&e.key==='Enter')runAsk(e.target.value);});
+main.addEventListener('keydown',function(e){if(e.target.id==='ask'&&e.key==='Enter')runAsk(e.target.value);else if(e.target.id==='pedit'&&e.key==='Enter'){var sb=document.querySelector('[data-pref-save]');if(sb)sb.click();}else if(e.target.id==='pedit'&&e.key==='Escape'){e.stopPropagation();S.editPref=null;renderPrefs();}});
 document.addEventListener('keydown',function(e){
   var typing=/^(input|textarea|select)$/i.test((e.target.tagName||''));
   if(e.key==='/'&&!typing){e.preventDefault();if(S.view!=='home')home();var a=document.getElementById('ask');if(a)a.focus();}
@@ -493,11 +559,15 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/pause' && req.method === 'POST') return json(res, setPause(!!(await body(req)).paused));
     if (p === '/api/episode' && req.method === 'DELETE') return json(res, delEpisode((await body(req)).hash));
     if (p === '/api/clear' && req.method === 'POST') return json(res, clear((await body(req)).scope));
+    if (p === '/api/preferences') return json(res, await prefs());
+    if (p === '/api/preferences/approve' && req.method === 'POST') { const b = await body(req); prefApprove(b); if (b.from) prefDismiss(b.from); return json(res, await prefs()); }
+    if (p === '/api/preferences/dismiss' && req.method === 'POST') { prefDismiss((await body(req)).id); return json(res, await prefs()); }
+    if (p === '/api/preferences/remove' && req.method === 'POST') { prefRemove((await body(req)).id); return json(res, await prefs()); }
     res.writeHead(200, { 'content-type': 'text/html' }); res.end(HTML);
   } catch (e) {
     res.writeHead(500, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: String((e && e.message) || e) }));
   }
 });
 
-const PORT = process.env.CONTINUUM_PORT || 3939;
+const PORT = process.env.CONTINUUM_PORT || process.env.PORT || 3939;
 server.listen(PORT, () => console.error(`continuum dashboard → http://localhost:${PORT}`));
