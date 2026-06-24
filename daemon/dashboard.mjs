@@ -190,17 +190,17 @@ const HTML = `<!doctype html><html lang=en><head><meta charset=utf8><meta name=v
 :root{
   --bg:#fbfbfd;--fg:#1d1d1f;--sec:#86868b;--faint:#b0b0b6;--ic:#33333a;--line:#e6e6ea;--fill:#f0f0f3;--fill2:#eaeaee;--card:#fff;
   --accent:#0071e3;--green:#1a9c4e;--danger:#e0352b;--bar:#c9c9ce;--barTop:#1d1d1f;
-  --shadow:0 1px 2px rgba(0,0,0,.04),0 12px 38px rgba(0,0,0,.07);--ease:cubic-bezier(.22,.61,.36,1);
+  --shadow:0 1px 2px rgba(0,0,0,.04),0 12px 38px rgba(0,0,0,.07);--ease:cubic-bezier(.22,.61,.36,1);color-scheme:light;
 }
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){
   --bg:#0a0a0b;--fg:#f5f5f7;--sec:#98989f;--faint:#5a5a61;--ic:#e4e4ea;--line:#212126;--fill:#161618;--fill2:#1d1d21;--card:#161618;
   --accent:#0a84ff;--green:#30d158;--danger:#ff453a;--bar:#3a3a3d;--barTop:#f5f5f7;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 48px rgba(0,0,0,.55);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 48px rgba(0,0,0,.55);color-scheme:dark;
 }}
 :root[data-theme=dark]{
   --bg:#0a0a0b;--fg:#f5f5f7;--sec:#98989f;--faint:#5a5a61;--ic:#e4e4ea;--line:#212126;--fill:#161618;--fill2:#1d1d21;--card:#161618;
   --accent:#0a84ff;--green:#30d158;--danger:#ff453a;--bar:#3a3a3d;--barTop:#f5f5f7;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 48px rgba(0,0,0,.55);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 16px 48px rgba(0,0,0,.55);color-scheme:dark;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font:17px/1.5 -apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Segoe UI',Roboto,sans-serif;letter-spacing:-.01em;background:var(--bg);color:var(--fg);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -237,7 +237,7 @@ main{max-width:600px;margin:0 auto;padding:0 24px 96px;animation:rise .5s var(--
 .brow:first-child .fill{background:var(--barTop)}
 .brow .v{width:48px;text-align:right;font-size:14px;color:var(--sec);font-variant-numeric:tabular-nums}
 .rows{margin-top:2px}
-.row{width:100%;text-align:left;background:none;border:none;cursor:pointer;font:inherit;display:flex;align-items:center;gap:14px;padding:17px 2px;border-top:1px solid var(--line);transition:padding .2s var(--ease)}
+.row{width:100%;text-align:left;background:none;border:none;cursor:pointer;font:inherit;color:var(--fg);display:flex;align-items:center;gap:14px;padding:17px 2px;border-top:1px solid var(--line);transition:padding .2s var(--ease)}
 .rows .row:first-child{border-top:none}
 .row:hover{padding-left:9px;padding-right:0}
 .row .body{flex:1;min-width:0}
