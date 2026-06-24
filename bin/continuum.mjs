@@ -91,12 +91,16 @@ async function start() {
   const cfg = loadConfig();
   const deps = buildDeps(cfg);
   const source = process.env.CONTINUUM_CAPTURE || cfg.capture.source;   // screen (default) | ax
-  console.error(`continuum: tier=${deps.tier} capture=${source} embed=${cfg.embeddings.provider} graph=${deps.graphEnabled ? 'on' : 'off'} → ${DATA_DIR}/episodes.ndjson\n`);
+  // Capture SILENTLY by default: a terminal showing per-episode logs gets OCR'd back in, creating a
+  // self-referential feedback loop (and OCR mangles any skip-markers we'd match on — brittle). The
+  // durable fix is to not print the noise. Set CONTINUUM_VERBOSE=1 to watch episodes scroll.
+  const verbose = process.env.CONTINUUM_VERBOSE === '1';
+  console.error(`continuum: capturing (${source}, ${cfg.embeddings.provider}) → ${DATA_DIR} · silent (CONTINUUM_VERBOSE=1 to see episodes)\n`);
 
   const p = new Pipeline({
     embed: deps.embed,
     segmenterOpts: { fuseAudio: cfg.capture.audio },   // #11: bind spoken utterances to the active visual segment
-    onEpisode: (ep) => { appendEpisode(ep); console.error(`  episode [${ep.app}] ${ep.close_reason} sal=${ep.salience} ${ep.text.slice(0, 70)}…`); },
+    onEpisode: (ep) => { appendEpisode(ep); if (verbose) console.error(`  episode [${ep.app}] ${ep.close_reason} sal=${ep.salience} ${ep.text.slice(0, 70)}…`); },
   });
 
   // Serialize ingests — the segmenter's state isn't concurrency-safe, and we feed it from
