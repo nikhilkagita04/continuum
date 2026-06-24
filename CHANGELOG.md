@@ -22,6 +22,10 @@ The round that made capture "see (and hear) the screen the way a person does."
   rate, and end-to-end recall over checked-in fixtures — so capture changes move a number, not a vibe.
 - Dashboard dark-mode text fix.
 
+## 0.3.1 — interim
+Mid-round publish of the capture-quality + audio work; superseded by 0.4.0 (audio verified working,
+README reframed around the single-MCP promise).
+
 ## 0.3.0 — perception pipeline
 - The **Screen Scene Graph** design (`docs/architecture/perception.md`) and its staged build: eval
   harness, AX scene-graph capture (additive), semantic labeling, cross-modal fusion, temporal
