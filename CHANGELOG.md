@@ -2,6 +2,15 @@
 
 All notable changes. Dates are when the work landed; npm releases are tagged per version.
 
+## 0.4.1
+- **MCP tools reframed for ambient personalization** — the `search_context` / `recent_activity`
+  descriptions (and a new server-level `instructions` field) now tell the agent to use your context
+  to *understand you* — what you're building, how you think and write, your taste — and tailor its
+  help proactively, not just to answer explicit "what was I doing" questions.
+- README onboarding leads with **hand-it-to-your-agent** (install + connect in one paste); manual
+  setup is the fallback.
+- GitHub About, npm description, and README aligned to the single-MCP positioning.
+
 ## 0.4.0 — capture quality + audio (verified on real data)
 The round that made capture "see (and hear) the screen the way a person does."
 
