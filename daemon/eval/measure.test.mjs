@@ -22,6 +22,7 @@ const TOKENS = ['neo4j', 'segmenter', 'pitch', 'kubernetes', 'broccoli'];
 // A fake model: writes probes that contain the source's distinctive token, and judges an answer
 // correct+grounded exactly when it was given non-empty context.
 const fakeLLM = async (system, user) => {
+  if (/answerable specifically/i.test(system)) return 'yes';
   if (/write ONE specific/i.test(system)) { const t = TOKENS.find((tok) => user.toLowerCase().includes(tok)); return `What was I doing with ${t || user.split(/\s+/)[3]}?`; }
   if (/strict evaluator/i.test(system)) { const ctx = (user.split('CONTEXT:')[1] || '').trim(); return ctx ? '{"correct": true, "grounded": true}' : '{"correct": false, "grounded": false}'; }
   if (/using ONLY this context/i.test(system)) return 'From your memory: ' + user.slice(0, 40);
