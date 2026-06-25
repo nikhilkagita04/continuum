@@ -4,6 +4,7 @@
 import { createInterface } from 'node:readline';
 import { Segmenter, simhash, hamming } from './stage2/segmenter.mjs';
 import { LineNovelty } from './stage2/novelty.mjs';
+import { stripChrome } from './stage1/chrome.mjs';
 import { HybridIndex } from './stage3/index.mjs';
 import { runDailyRollup, labelEpisode } from './stage4/distill.mjs';
 import { answerQuery } from './retrieval.mjs';
@@ -22,7 +23,8 @@ export class Pipeline {
   // Capture the whole window, but drop lines already seen recently for it (stable chrome) so only
   // what changed is re-encoded. A pure-chrome refresh yields nothing novel → skipped entirely.
   async ingest(ev) {
-    const e = this.novelty ? this.novelty.filter(ev) : ev;
+    const dechromed = ev && typeof ev.text === 'string' ? { ...ev, text: stripChrome(ev.text, ev.app) } : ev;  // drop browser tab/bookmark/nav chrome first
+    const e = this.novelty ? this.novelty.filter(dechromed) : dechromed;
     if (!e) return;
     for (const ep of this.seg.ingest(e)) await this._store(ep);
   }
