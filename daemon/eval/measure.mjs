@@ -23,11 +23,18 @@ export async function genProbe(ep, llm) {
   const txt = ((ep.structured && ep.structured.summary) || ep.text || '').slice(0, 800);
   if (!txt) return null;
   const q = await llm(
-    'From this captured moment of a user\'s own activity, write ONE specific, natural question the user might later ask whose answer is found in this moment. No preamble — return only the question.',
+    'From this captured moment of a user\'s own activity, write ONE specific, natural question the user might later ask that is FULLY answerable from THIS moment alone — do not ask for details (names, numbers, files) that are not present here. No preamble — return only the question.',
     txt, 60,
   );
   const clean = String(q || '').trim().replace(/^["'-]+|["']+$/g, '').split('\n')[0];
   return clean && clean.length > 8 ? clean : null;
+}
+
+// Is the question actually answerable from its source? Drops over-specific / malformed auto-probes so
+// the correctness metric measures the SYSTEM, not the quality of the generated questions.
+async function answerable(q, sourceText, llm) {
+  const v = await llm('Is the QUESTION answerable specifically and factually from the SOURCE text alone? Reply ONLY "yes" or "no".', `SOURCE: ${String(sourceText).slice(0, 700)}\n\nQUESTION: ${q}`, 5);
+  return /^\s*yes/i.test(String(v || ''));
 }
 
 // Judge an answer against the ground-truth source moment + the snippets it was given.
@@ -44,16 +51,18 @@ export async function judgeAnswer(q, sourceText, answer, snippets, llm) {
 
 // Generate the probe set ONCE — questions written from the user's own salient moments, each paired
 // with the source episode it came from (ground truth). Reuse the same set across configs for a fair A/B.
-export async function generateProbes(episodes = [], llm, { n = 10 } = {}) {
+export async function generateProbes(episodes = [], llm, { n = 10, validate = false } = {}) {
   const sources = episodes
     .filter((e) => (e.text || '').length > 80)
     .sort((a, b) => (b.salience || 0) - (a.salience || 0) || (b.end || 0) - (a.end || 0))
-    .slice(0, n * 2);
+    .slice(0, n * (validate ? 4 : 2));   // widen the pool when validating, since some probes get dropped
   const probes = [];
   for (const src of sources) {
     if (probes.length >= n) break;
     const q = await genProbe(src, llm);
-    if (q) probes.push({ q, sourceId: src.content_hash, source: src });
+    if (!q) continue;
+    if (validate && !(await answerable(q, src.text, llm))) continue;
+    probes.push({ q, sourceId: src.content_hash, source: src });
   }
   return probes;
 }
@@ -100,7 +109,7 @@ export async function runMeasure({ n = 10, k = 5, embed, llm, episodes, index, n
   episodes = episodes || loadEpisodes();
   if (!llm) return { error: 'measurement needs a model to write probes and judge. Set up Ollama (free, local) or add an API key, then retry.' };
   if (episodes.filter((e) => (e.text || '').length > 80).length < 4) return { error: `not enough captured memory yet. Run \`continuum start\` for a while, then retry.` };
-  const probes = await generateProbes(episodes, llm, { n });
+  const probes = await generateProbes(episodes, llm, { n, validate: true });   // only score answerable probes
   if (!probes.length) return { error: 'could not generate probes from the current memory — try again or capture more.' };
   index = index || await loadIndex(embed);
   const nowMs = now || episodes.reduce((m, e) => Math.max(m, e.end || e.start || 0), 0);
