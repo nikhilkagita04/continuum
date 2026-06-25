@@ -35,16 +35,17 @@ continuum mcp-install  # connect it to Claude Desktop, then restart Claude
 ## What you get
 
 - **Sees and hears your screen** — on-device OCR of the focused window (deduped to content, not noise), plus optional meeting transcription (mic + system audio, speaker-tagged, transcribe-then-delete).
+- **Understands who you are** — an out-of-band *dreaming* pass consolidates the raw firehose into small, cited memory files (who you are · projects · people · taste · decisions) your agent reads to genuinely understand you, not just recall moments (`continuum dream` · `continuum memory`).
 - **Learns how you work** — standing preferences like *"be concise"* or *"run the tests before the PR"* apply to every agent automatically; you stay in control (dashboard or `continuum preferences`).
-- **Local-first** — everything lives in `~/.continuum`; PII is redacted and credential managers excluded; nothing leaves your machine.
+- **Local-first & read-only to agents** — everything lives in `~/.continuum`; PII redacted, credential managers excluded; the agent only *reads* your memory, so a prompt-injected agent can't poison it. Nothing leaves your machine.
 
-Runs free and on-device; point it at **Ollama** or add an **OpenAI / Anthropic** key for higher-quality inference.
+**Free & local:** capture, retrieval (hybrid `bge-m3` + RRF), and preferences run on-device for free. **Deep memory (dreaming)** needs a *capable* model — a strong local instruct model, or an **OpenAI / Anthropic** key.
 
 ## How it works
 
-<p align="center"><img src="docs/assets/pipeline.svg" width="100%" alt="capture → segment → index → distill"></p>
+<p align="center"><img src="docs/assets/pipeline.svg" width="100%" alt="two tiers: a live firehose (capture → segment → index → recall) and an out-of-band dreaming pass (dream → memory → profile)"></p>
 
-Capture → segment → index → distill. The first three run locally and free; only distill calls an LLM — batched to roughly **1000× fewer calls** than processing every frame, and never on the capture path. The stages are importable modules — a useful tool is ~20 lines (see [`examples/`](examples/)). Deep dive: [architecture](docs/architecture/ingestion-pipeline.md).
+**Two tiers over one episode store.** Continuum captures your screen and groups it into **episodes**. The **live tier** indexes them so any agent can answer *"what was I doing?"* over MCP (`recall` / `catch_up`) — local and free. An out-of-band **dreaming** pass reads the same episodes and consolidates them into the durable memory files your agent reads to *understand* you (`profile`): *verify · organize · enrich*, grounded in the source moments. The LLM never touches the capture path. The stages are importable modules (a useful tool is ~20 lines, see [`examples/`](examples/)). Deep dive: [architecture](docs/architecture/ingestion-pipeline.md).
 
 ## Develop
 

@@ -1,20 +1,12 @@
-<svg width="100%" viewBox="0 0 880 132" role="img" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, sans-serif">
-  <title>Continuum pipeline</title>
-  <desc>Four stages — capture, segment, index, distill. The first three run locally and free; only distill uses an LLM, batched so it makes roughly 1000× fewer calls than processing every frame.</desc>
+<svg width="100%" viewBox="0 0 880 224" role="img" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, Helvetica, sans-serif">
+  <title>Continuum memory — two tiers</title>
+  <desc>Two tiers over one episode store. Capture turns your screen into episodes; the live tier indexes them for recall and catch_up; an out-of-band dreaming pass reads the same episodes and consolidates them into durable memory files the agent reads to understand you (profile): verify, organize, enrich. The LLM never touches the capture path.</desc>
   <style>
-    .bx{fill:#c9c9ce}
-    .bxe{fill:#1d1d1f}
-    .tx{fill:#1d1d1f}
-    .txe{fill:#ffffff}
-    .sub{fill:#86868b}
-    .ar{stroke:#b0b0b6}
+    .bx{fill:#c9c9ce}.bxe{fill:#1d1d1f}.pill{fill:none;stroke:#b0b0b6;stroke-width:1.4}
+    .tx{fill:#1d1d1f}.txe{fill:#ffffff}.sub{fill:#86868b}.lane{fill:#86868b}.ar{stroke:#b0b0b6}
     @media (prefers-color-scheme:dark){
-      .bx{fill:#3a3a3d}
-      .bxe{fill:#f5f5f7}
-      .tx{fill:#f5f5f7}
-      .txe{fill:#0a0a0b}
-      .sub{fill:#98989f}
-      .ar{stroke:#5a5a61}
+      .bx{fill:#3a3a3d}.bxe{fill:#f5f5f7}.pill{stroke:#5a5a61}
+      .tx{fill:#f5f5f7}.txe{fill:#0a0a0b}.sub{fill:#98989f}.lane{fill:#98989f}.ar{stroke:#5a5a61}
     }
   </style>
   <defs>
@@ -23,24 +15,32 @@
     </marker>
   </defs>
 
-  <rect class="bx" x="30"  y="26" width="160" height="56" rx="14"/>
-  <text class="tx" x="110" y="59" text-anchor="middle" font-size="16" font-weight="600" letter-spacing=".2">Capture</text>
+  <!-- lane labels (left margin, clear of everything) -->
+  <text class="lane" x="16" y="63" font-size="11" font-weight="700" letter-spacing=".06em">LIVE</text>
+  <text class="sub"  x="16" y="77" font-size="10">local · free</text>
+  <text class="lane" x="16" y="173" font-size="11" font-weight="700" letter-spacing=".06em">DREAMING</text>
+  <text class="sub"  x="16" y="187" font-size="10">out of band</text>
 
-  <rect class="bx" x="250" y="26" width="160" height="56" rx="14"/>
-  <text class="tx" x="330" y="59" text-anchor="middle" font-size="16" font-weight="600" letter-spacing=".2">Segment</text>
+  <!-- live firehose -->
+  <rect class="bx"  x="116" y="44" width="140" height="50" rx="13"/><text class="tx" x="186" y="74" text-anchor="middle" font-size="15" font-weight="600">Capture</text>
+  <rect class="bx"  x="276" y="44" width="140" height="50" rx="13"/><text class="tx" x="346" y="74" text-anchor="middle" font-size="15" font-weight="600">Episodes</text>
+  <rect class="bx"  x="436" y="44" width="140" height="50" rx="13"/><text class="tx" x="506" y="74" text-anchor="middle" font-size="15" font-weight="600">Index</text>
+  <rect class="pill" x="606" y="44" width="258" height="50" rx="25"/><text class="tx" x="735" y="74" text-anchor="middle" font-size="15" font-weight="600">recall · catch_up</text>
+  <line class="ar" x1="256" y1="69" x2="272" y2="69" stroke-width="1.4" marker-end="url(#a)"/>
+  <line class="ar" x1="416" y1="69" x2="432" y2="69" stroke-width="1.4" marker-end="url(#a)"/>
+  <line class="ar" x1="576" y1="69" x2="602" y2="69" stroke-width="1.4" marker-end="url(#a)"/>
+  <text class="sub" x="735" y="112" text-anchor="middle" font-size="12">"what was I doing?"</text>
 
-  <rect class="bx" x="470" y="26" width="160" height="56" rx="14"/>
-  <text class="tx" x="550" y="59" text-anchor="middle" font-size="16" font-weight="600" letter-spacing=".2">Index</text>
+  <!-- episodes feed the dreaming pass (clean vertical, in empty space) -->
+  <line class="ar" x1="346" y1="94" x2="346" y2="150" stroke-width="1.4" marker-end="url(#a)"/>
 
-  <rect class="bxe" x="690" y="26" width="160" height="56" rx="14"/>
-  <text class="txe" x="770" y="59" text-anchor="middle" font-size="16" font-weight="600" letter-spacing=".2">Distill</text>
-
-  <line class="ar" x1="198" y1="54" x2="242" y2="54" stroke-width="1.4" marker-end="url(#a)"/>
-  <line class="ar" x1="418" y1="54" x2="462" y2="54" stroke-width="1.4" marker-end="url(#a)"/>
-  <line class="ar" x1="638" y1="54" x2="682" y2="54" stroke-width="1.4" marker-end="url(#a)"/>
-
-  <text class="sub" x="110" y="106" text-anchor="middle" font-size="12.5">what's on screen</text>
-  <text class="sub" x="330" y="106" text-anchor="middle" font-size="12.5">grouped to episodes</text>
-  <text class="sub" x="550" y="106" text-anchor="middle" font-size="12.5">all searchable</text>
-  <text class="sub" x="770" y="106" text-anchor="middle" font-size="12.5">~1000× fewer LLM calls</text>
+  <!-- dreaming -->
+  <rect class="bxe" x="276" y="152" width="140" height="50" rx="13"/><text class="txe" x="346" y="182" text-anchor="middle" font-size="15" font-weight="600">Dream</text>
+  <rect class="bx"  x="436" y="152" width="140" height="50" rx="13"/><text class="tx" x="506" y="182" text-anchor="middle" font-size="15" font-weight="600">memory/</text>
+  <rect class="pill" x="606" y="152" width="200" height="50" rx="25"/><text class="tx" x="706" y="182" text-anchor="middle" font-size="15" font-weight="600">profile</text>
+  <line class="ar" x1="416" y1="177" x2="432" y2="177" stroke-width="1.4" marker-end="url(#a)"/>
+  <line class="ar" x1="576" y1="177" x2="602" y2="177" stroke-width="1.4" marker-end="url(#a)"/>
+  <text class="sub" x="346" y="220" text-anchor="middle" font-size="12">verify · organize · enrich</text>
+  <text class="sub" x="506" y="220" text-anchor="middle" font-size="12">about · taste · decisions</text>
+  <text class="sub" x="706" y="220" text-anchor="middle" font-size="12">who you are</text>
 </svg>

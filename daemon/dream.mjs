@@ -36,7 +36,7 @@ const stamp = (body, date, n) => {
 
 export async function dream({ episodes, llm, sections = SECTIONS, now = Date.now() } = {}) {
   episodes = episodes || loadEpisodes();
-  if (!llm) return { error: 'dreaming needs a model — set up Ollama (free, local) or add a key for Pro, then retry.' };
+  if (!llm) return { error: 'dreaming needs a CAPABLE model — a strong local instruct model (8B+ general, not a small coder model) via Ollama, or an OpenAI/Anthropic key. Capture, retrieval, and preferences work fully without it.' };
   const usable = episodes.filter((e) => (e.text || '').length > 40);
   if (usable.length < 8) return { error: `not enough memory to dream over yet (${usable.length} usable episodes). Run \`continuum start\` for a while.` };
 

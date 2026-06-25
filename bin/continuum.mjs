@@ -204,7 +204,7 @@ switch (cmd) {
     console.error('dreaming — consolidating your captured moments into durable memory (verify · organize · enrich)…');
     const r = await dream({ llm });
     if (r.error) { console.log('continuum dream\n\n  ' + r.error); break; }
-    console.log(`continuum dream\n\n  consolidated ${r.episodes} moments → ${r.written.length} memory files (${r.date})\n  ${r.written.join(', ')}\n  → ${r.dir}\n\n  read them: continuum memory`);
+    console.log(`continuum dream\n\n  consolidated ${r.episodes} moments → ${r.written.length} memory files (${r.date})\n  ${r.written.join(', ')}\n  → ${r.dir}\n\n  read them: continuum memory\n  note: quality depends on the model — a frontier model (Pro) or a strong local instruct model. Review the output; small/coder models produce poor summaries.`);
     break;
   }
   case 'memory': {                                                      // show the consolidated Tier-2 memory
