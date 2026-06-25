@@ -2,6 +2,21 @@
 
 All notable changes. Dates are when the work landed; npm releases are tagged per version.
 
+## 0.6.2 — trustworthy eval + recency-aware retrieval
+A measurement-honesty pass. Diagnosing a low answer-correctness number showed the *eval* was lying,
+not the model: the auto-generated probes were often unanswerable or over-specific, so the model's
+correct, honest "I don't have that" got scored wrong.
+- **Validated probes.** `measure` now checks every probe is actually answerable from its source before
+  scoring (and the generator is told to ask only what the moment supports), so correctness measures the
+  system, not the questions. On real data this moved the true number 33% → ~53%.
+- **Recency-aware query routing.** The honest eval exposed the real weak spot — recency-sensitive
+  factual queries over near-duplicate episodes ("what version did I *just* publish/install/push"),
+  where RRF returns a similar episode instead of the most recent. `routeSearch` sends queries with
+  recency markers (just / latest / recently / today / last …) to recency-weighted fusion; everything
+  else keeps RRF. Wired into `recall` and `answerQuery`.
+- **Cleaner answer context.** `assembleContext` trims browser-chrome residue, drops near-duplicate
+  snippets, and caps length before the model sees it.
+
 ## 0.6.1 — capture quality + retrieval, measured end-to-end
 A measurement-driven pass that moved real numbers: retrieval hit@5 ~60% → ~95%, MRR 0.50 → 0.93,
 and capture unique-token ratio 0.70 → 0.84. The lesson: fixing capture beat any embedding upgrade
