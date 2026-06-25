@@ -11,6 +11,7 @@ import { buildDeps, loadConfig, DATA_DIR } from './config.mjs';
 import { loadIndex, loadEpisodes, STORE_FILE } from './store.mjs';
 import { recall, catchUp, profile, snapshot } from './mcp.mjs';
 import { instructionsBlock, activePreferences } from './preferences.mjs';
+import { memoryBlock } from './memory.mjs';
 
 const { embed, llm } = buildDeps();
 const AUDIT = path.join(DATA_DIR, 'mcp-queries.log');
@@ -80,7 +81,8 @@ async function handle(req) {
     case 'initialize': {
       const { episodes: eps } = await ready();
       const { exclude } = scope();
-      const snap = snapshot(eps, { exclude });
+      const about = memoryBlock({ only: 'about.md' });          // dreamed orientation (who this user is)
+      const snap = about || snapshot(eps, { exclude });         // prefer the consolidated about; fall back to the live snapshot
       const prefs = instructionsBlock(activePreferences(eps));  // active standing preferences (approved + auto-applied)
       const instructions = INSTRUCTIONS_BASE + (snap ? `\n\n${snap}` : '') + (prefs ? `\n\n${prefs}` : '');
       return { jsonrpc: '2.0', id, result: { protocolVersion: params?.protocolVersion || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'continuum', version: '0.6.2' }, instructions } };
@@ -104,13 +106,16 @@ async function handle(req) {
         return text(id, fmtResults(rows));
       }
       if (name === 'profile') {
-        const p = await profile(eps, { ...args, llm, ...common });
-        audit('profile', args.topic || '(general)', p.sources ? p.sources.length : 0);
-        // Also surface active work-style prefs here — instructions are fixed at connect time, so this
-        // is how a long-running session picks up prefs the user approved after it started.
+        audit('profile', args.topic || '(general)', 0);
         const active = activePreferences(eps);
-        const block = active.length ? '\n\nHow they want you to work (apply by default):\n' + active.map((x) => `- ${x.text}`).join('\n') : '';
-        return text(id, fmtProfile(p) + block);
+        const prefBlock = active.length ? '\n\nHow they want you to work (apply by default):\n' + active.map((x) => `- ${x.text}`).join('\n') : '';
+        // Prefer the dreamed Tier-2 memory — consolidated, grounded, consistent, and instant. Topic
+        // narrows to a section (taste / projects / people / decisions) when asked.
+        const mem = args.topic ? (memoryBlock({ only: String(args.topic).toLowerCase().split(/\s+/)[0] + '.md' }) || memoryBlock()) : memoryBlock();
+        if (mem) return text(id, mem + prefBlock);
+        // Not dreamed yet → fall back to the on-the-fly profile over raw episodes.
+        const p = await profile(eps, { ...args, llm, ...common });
+        return text(id, fmtProfile(p) + prefBlock);
       }
       return { jsonrpc: '2.0', id, error: { code: -32601, message: `unknown tool: ${name}` } };
     }
