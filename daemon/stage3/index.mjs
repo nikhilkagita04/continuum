@@ -39,7 +39,7 @@ export class HybridIndex {
     return s;
   }
 
-  async search(query, { k = 5, now = 0, weights = { vec: 0.5, kw: 0.3, rec: 0.1, sal: 0.1 } } = {}) {
+  async search(query, { k = 5, now = 0, weights = { vec: 0.5, kw: 0.3, rec: 0.1, sal: 0.1 }, fusion = 'rrf' } = {}) {
     if (!this.docs.length) return [];
     const qv = this.embed ? await this.embed(query) : null;
     const qt = terms(query);
@@ -51,9 +51,19 @@ export class HybridIndex {
       rec: Math.pow(0.5, Math.max(0, nowMs - d.ts) / this.half),
       sal: d.salience,
     }));
-    normalizeField(scored, 'vec');   // cosine is already 0..1-ish but normalize for fair fusion
-    normalizeField(scored, 'kw');    // BM25 is unbounded → must normalize
-    for (const s of scored) s.score = weights.vec * s.vec + weights.kw * s.kw + weights.rec * s.rec + weights.sal * s.sal;
+    if (fusion === 'rrf') {
+      // Reciprocal Rank Fusion of the lexical + semantic rankings (Glean-style) — robust to the two
+      // signals being on different scales; recency/salience kept as light tie-breaking bonuses.
+      const ranksOf = (f) => { const order = scored.map((_, i) => i).sort((a, b) => scored[b][f] - scored[a][f]); const r = new Array(scored.length); order.forEach((i, rank) => { r[i] = rank; }); return r; };
+      const rv = ranksOf('vec'), rk = ranksOf('kw'), rr = ranksOf('rec'), rs = ranksOf('sal'); const C = 60;
+      // recency + salience join as LIGHT rank contributions (0.25×) — on the same 1/(C+rank) scale as
+      // the relevance signals, so they tie-break without overpowering semantic/lexical relevance.
+      for (let i = 0; i < scored.length; i++) scored[i].score = 1 / (C + rv[i]) + 1 / (C + rk[i]) + 0.25 / (C + rr[i]) + 0.25 / (C + rs[i]);
+    } else {
+      normalizeField(scored, 'vec');   // cosine is already 0..1-ish but normalize for fair fusion
+      normalizeField(scored, 'kw');    // BM25 is unbounded → must normalize
+      for (const s of scored) s.score = weights.vec * s.vec + weights.kw * s.kw + weights.rec * s.rec + weights.sal * s.sal;
+    }
     return scored.sort((a, b) => b.score - a.score).slice(0, k);
   }
 }
