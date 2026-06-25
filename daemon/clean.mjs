@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import { loadEpisodes, STORE_FILE } from './store.mjs';
 import { contentHash } from './stage2/segmenter.mjs';
+import { stripChrome } from './stage1/chrome.mjs';
 
 const toks = (t) => (t || '').toLowerCase().match(/[a-z0-9]+/g) || [];
 export const uniqRatio = (t) => { const w = toks(t); return w.length ? new Set(w).size / w.length : 1; };
@@ -44,8 +45,9 @@ export function cleanStore({ apply = false, opts = {} } = {}) {
     if (n >= 20) { s.uBefore += uniqRatio(e.text); s.nB++; }
     const r = cleanText(e.text, opts);
     if (r.action === 'delete') { s.deleted++; if (s.samples.length < 5) s.samples.push({ act: 'delete', app: e.app, was: (e.text || '').replace(/\s+/g, ' ').slice(0, 70) }); continue; }
-    const ep = r.action === 'cleaned' ? { ...e, text: r.text, content_hash: contentHash(r.text) } : e;
-    if (r.action === 'cleaned') { s.cleaned++; if (s.samples.length < 5) s.samples.push({ act: 'cleaned', app: e.app, was: (e.text || '').replace(/\s+/g, ' ').slice(0, 50), now: r.text.replace(/\s+/g, ' ').slice(0, 50) }); }
+    const text = stripChrome(r.action === 'cleaned' ? r.text : e.text, e.app);   // also drop browser chrome
+    const ep = text !== e.text ? { ...e, text, content_hash: contentHash(text) } : e;
+    if (text !== e.text) { s.cleaned++; if (s.samples.length < 5) s.samples.push({ act: 'cleaned', app: e.app, was: (e.text || '').replace(/\s+/g, ' ').slice(0, 50), now: text.replace(/\s+/g, ' ').slice(0, 50) }); }
     else s.kept++;
     const m = toks(ep.text).length; s.tokAfter += m;
     if (m >= 20) { s.uAfter += uniqRatio(ep.text); s.nA++; }

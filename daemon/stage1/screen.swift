@@ -92,6 +92,9 @@ func ocr(_ image: CGImage) -> String {
   let req = VNRecognizeTextRequest()
   req.recognitionLevel = .accurate
   req.usesLanguageCorrection = true
+  // Skip tiny UI chrome (browser tab strip, bookmarks, status bars): it OCRs poorly and jitters frame
+  // to frame, so it both adds noise AND defeats line-novelty dedup. Fraction of image height; 0 = off.
+  req.minimumTextHeight = Float(ProcessInfo.processInfo.environment["CONTINUUM_OCR_MINHEIGHT"] ?? "0") ?? 0
   try? VNImageRequestHandler(cgImage: image, options: [:]).perform([req])
   let minConf = Float(ProcessInfo.processInfo.environment["CONTINUUM_OCR_MINCONF"] ?? "0.4") ?? 0.4
   var rows: [(row: Int, x: CGFloat, text: String)] = []
