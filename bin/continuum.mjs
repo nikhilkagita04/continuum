@@ -26,6 +26,8 @@ import { watchFiles } from '../daemon/stage1/files.mjs';
 import { runEval, formatReport } from '../daemon/eval/eval.mjs';
 import { runMeasure, formatScorecard } from '../daemon/eval/measure.mjs';
 import { cleanStore, formatClean } from '../daemon/clean.mjs';
+import { dream } from '../daemon/dream.mjs';
+import { listMemory, readMemory, MEMORY_DIR } from '../daemon/memory.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const STAGE1 = path.join(HERE, '..', 'daemon', 'stage1');
@@ -197,6 +199,24 @@ switch (cmd) {
     console.log(formatScorecard(await runMeasure({ embed, llm })));
     break;
   }
+  case 'dream': {                                                       // consolidate episodes → Tier-2 memory files
+    const { llm } = buildDeps();
+    console.error('dreaming — consolidating your captured moments into durable memory (verify · organize · enrich)…');
+    const r = await dream({ llm });
+    if (r.error) { console.log('continuum dream\n\n  ' + r.error); break; }
+    console.log(`continuum dream\n\n  consolidated ${r.episodes} moments → ${r.written.length} memory files (${r.date})\n  ${r.written.join(', ')}\n  → ${r.dir}\n\n  read them: continuum memory`);
+    break;
+  }
+  case 'memory': {                                                      // show the consolidated Tier-2 memory
+    const which = process.argv[3];
+    if (which) { console.log(readMemory(which.endsWith('.md') ? which : which + '.md') || `(no ${which} yet — run \`continuum dream\`)`); break; }
+    const files = listMemory();
+    if (!files.length) { console.log(`continuum memory\n\n  (empty — run \`continuum dream\` to consolidate your captured moments)\n  ${MEMORY_DIR}`); break; }
+    console.log(`continuum memory — what your agent knows about you\n\n  ${MEMORY_DIR}\n`);
+    for (const f of files) console.log(`  ${f.padEnd(16)} ${readMemory(f).split('\n').filter((l) => l && !l.startsWith('#') && !l.startsWith('<!--')).slice(0, 1).join(' ').slice(0, 70)}…`);
+    console.log('\n  view one: continuum memory about');
+    break;
+  }
   case 'start': await start(); break;
   case 'dashboard': await import('../daemon/dashboard.mjs'); break;
   case 'mcp': await import('../daemon/mcp-server.mjs'); break;       // stdio JSON-RPC — do not print to stdout
@@ -219,5 +239,5 @@ switch (cmd) {
     break;
   }
   default:
-    console.log('continuum <verify|start|dashboard|mcp-install|preferences|measure|clean|doctor|config|eval>\n\n  verify        prove it works in 30s (no setup)\n  start         live capture → local store\n  dashboard     timeline + search at localhost:3939\n  mcp-install   add Continuum to Claude Desktop (one step)\n  mcp-config    print the MCP config (for other clients)\n  preferences   review + curate how your agents work for you\n  measure       retrieval/answer quality over your real memory (needs a model)\n  clean         salvage/delete polluted episodes (--apply to write; backs up first)\n  doctor        environment check\n  config        resolved config\n  eval          capture/perception quality over local fixtures');
+    console.log('continuum <verify|start|dashboard|mcp-install|preferences|dream|memory|measure|clean|doctor|config|eval>\n\n  verify        prove it works in 30s (no setup)\n  start         live capture → local store\n  dashboard     timeline + search at localhost:3939\n  mcp-install   add Continuum to Claude Desktop (one step)\n  mcp-config    print the MCP config (for other clients)\n  preferences   review + curate how your agents work for you\n  dream         consolidate captured moments → durable memory (needs a model)\n  memory        show what your agent knows about you (the dreamed memory)\n  measure       retrieval/answer quality over your real memory (needs a model)\n  clean         salvage/delete polluted episodes (--apply to write; backs up first)\n  doctor        environment check\n  config        resolved config\n  eval          capture/perception quality over local fixtures');
 }
