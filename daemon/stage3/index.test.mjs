@@ -1,4 +1,4 @@
-import { HybridIndex } from './index.mjs';
+import { HybridIndex, routeSearch } from './index.mjs';
 import { localEmbedder } from '../adapters.mjs';
 
 let pass = 0, fail = 0;
@@ -33,6 +33,13 @@ console.log('\nStage 3 hybrid index\n');
   await idx.add({ id: 'high', text: 'misc background chatter about nothing in particular', salience: 0.9, end: 1 });
   const r = await idx.search('background chatter', { now: 1, fusion: 'weighted', weights: { vec: 0.2, kw: 0.2, rec: 0, sal: 0.6 } });
   ok('salience boost surfaces the salient doc (weighted mode)', r[0].ep.id === 'high', `top=${r[0].ep.id}`);
+}
+
+// query routing: recency-sensitive queries lean on recency; general queries use RRF
+{
+  ok('recency query routes to recency-weighted', routeSearch('what version did I just install').fusion === 'weighted' && routeSearch('what version did I just install').weights.rec >= 0.3);
+  ok('"latest"/"recent"/"today" also route to recency', ['the latest npm publish', 'what did I push recently', 'what did I do today'].every((q) => routeSearch(q).fusion === 'weighted'));
+  ok('general query uses RRF', routeSearch('how does the knowledge graph entity resolution work').fusion === 'rrf');
 }
 
 console.log(`\n${fail === 0 ? '✅' : '❌'}  ${pass} passed, ${fail} failed\n`);

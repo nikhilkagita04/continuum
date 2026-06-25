@@ -4,6 +4,17 @@ import { terms, cosine, normalizeField } from '../util.mjs';
 
 const K1 = 1.5, B = 0.75;
 
+// Query routing: "what did I JUST install / the LATEST version / what was published TODAY" are
+// recency-sensitive — among many near-duplicate episodes (terminal commands, version bumps), the
+// answer is the most RECENT match, not the most semantically central. Route those to recency-weighted
+// fusion; everything else uses RRF (best for general relevance). Surfaced by the validated eval.
+const RECENCY_Q = /\b(just|recently|latest|last|current(ly)?|now|today|tonight|this (week|morning|afternoon|evening)|most recent|earlier|previous)\b/i;
+export function routeSearch(query) {
+  return RECENCY_Q.test(query || '')
+    ? { fusion: 'weighted', weights: { vec: 0.35, kw: 0.3, rec: 0.3, sal: 0.05 } }
+    : { fusion: 'rrf' };
+}
+
 export class HybridIndex {
   constructor({ embed, recencyHalfLifeMs = 7 * 864e5 } = {}) {
     this.embed = embed;              // async (text) -> number[]  (optional; vector signal off if absent)
