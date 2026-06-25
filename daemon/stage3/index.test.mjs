@@ -22,8 +22,8 @@ console.log('\nStage 3 hybrid index\n');
   const idx = new HybridIndex({ embed, recencyHalfLifeMs: 1000 });
   await idx.add({ id: 'old', text: 'standup notes about the roadmap and milestones', salience: 0.5, end: 0 });
   await idx.add({ id: 'new', text: 'standup notes about the roadmap and milestones', salience: 0.5, end: 10_000 });
-  const r = await idx.search('roadmap milestones standup', { k: 2, now: 10_000, weights: { vec: 0.3, kw: 0.3, rec: 0.4, sal: 0 } });
-  ok('recency boosts the newer duplicate', r[0].ep.id === 'new', `top=${r[0].ep.id}`);
+  const r = await idx.search('roadmap milestones standup', { k: 2, now: 10_000, fusion: 'weighted', weights: { vec: 0.3, kw: 0.3, rec: 0.4, sal: 0 } });
+  ok('recency boosts the newer duplicate (weighted mode)', r[0].ep.id === 'new', `top=${r[0].ep.id}`);
 }
 
 // salience: weight it heavily and the high-salience doc surfaces
@@ -31,8 +31,8 @@ console.log('\nStage 3 hybrid index\n');
   const idx = new HybridIndex({ embed });
   await idx.add({ id: 'low', text: 'misc background chatter about nothing in particular', salience: 0.1, end: 1 });
   await idx.add({ id: 'high', text: 'misc background chatter about nothing in particular', salience: 0.9, end: 1 });
-  const r = await idx.search('background chatter', { now: 1, weights: { vec: 0.2, kw: 0.2, rec: 0, sal: 0.6 } });
-  ok('salience boost surfaces the salient doc', r[0].ep.id === 'high', `top=${r[0].ep.id}`);
+  const r = await idx.search('background chatter', { now: 1, fusion: 'weighted', weights: { vec: 0.2, kw: 0.2, rec: 0, sal: 0.6 } });
+  ok('salience boost surfaces the salient doc (weighted mode)', r[0].ep.id === 'high', `top=${r[0].ep.id}`);
 }
 
 console.log(`\n${fail === 0 ? '✅' : '❌'}  ${pass} passed, ${fail} failed\n`);
