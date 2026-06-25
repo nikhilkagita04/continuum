@@ -2,6 +2,25 @@
 
 All notable changes. Dates are when the work landed; npm releases are tagged per version.
 
+## 0.7.0 — consolidated memory + dreaming
+The second half of the memory architecture. The episodic firehose (capture → segment → index) stays
+live and local; a new **dreaming** pass consolidates it into the durable, file-based memory an agent
+reads to actually *understand* you — not just recall moments.
+- **Tier-2 memory** (`continuum memory`) — small, cited markdown files (`about` · `projects` · `people`
+  · `taste` · `decisions` · `preferences`) under `~/.continuum/memory/`. **Read-only to agents** — written
+  only by dreaming + human curation, so a prompt-injected agent can't poison it. Production primitives:
+  immutable versions (audit + rollback), content-hash preconditions, redact.
+- **Dreaming** (`continuum dream`) — an out-of-band *verify · organize · enrich · dedup* pass over the
+  episode digest, grounded in episode ids, merging with existing memory. Model-agnostic.
+- **MCP** — `profile()` now serves the consolidated memory (grounded, consistent, instant), falling
+  back to the on-the-fly profile when nothing's been dreamed yet; `initialize` leads with the dreamed
+  "about".
+- **Tiering** — capture, retrieval, and preferences are free/local. Dreaming needs a *capable* model
+  (a strong local instruct model, or a frontier key for Pro) — measured: a small coder model produces
+  unusable summaries, a frontier model produces excellent, cited memory. Consolidated memory beat raw
+  episodic retrieval on understanding questions (43% → 60%).
+- New two-tier architecture diagram. 19 new test assertions.
+
 ## 0.6.2 — trustworthy eval + recency-aware retrieval
 A measurement-honesty pass. Diagnosing a low answer-correctness number showed the *eval* was lying,
 not the model: the auto-generated probes were often unanswerable or over-specific, so the model's
