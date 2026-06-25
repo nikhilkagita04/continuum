@@ -2,6 +2,10 @@
 
 All notable changes. Dates are when the work landed; npm releases are tagged per version.
 
+## 0.7.1
+- Diagram: renamed "Segment" → "Episodes" (the artifact, not the stage) so the two-tier fork reads itself.
+- Dreaming model guard tightened: error message now says "capable model (8B+ general instruct)" rather than "Pro only", keeping the free local path open.
+
 ## 0.7.0 — consolidated memory + dreaming
 The second half of the memory architecture. The episodic firehose (capture → segment → index) stays
 live and local; a new **dreaming** pass consolidates it into the durable, file-based memory an agent
