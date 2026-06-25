@@ -1,6 +1,7 @@
 // MCP core logic — transport-free and testable. The stdio server (mcp-server.mjs) is a thin wrapper
 // over these. Pure over (index, episodes); no I/O. Design: docs/architecture/mcp.md.
 import { redactPII } from './stage2/segmenter.mjs';
+import { routeSearch } from './stage3/index.mjs';
 
 const SNIP = 280;
 const WORD = /[a-z0-9]+/gi;
@@ -55,7 +56,7 @@ const tOf = (e) => e.end || e.start || 0;
 // recall — semantic search + filters → attributed snippets.
 export async function recall(index, episodes, opts = {}) {
   const { query, since, until, apps, sources, k = 5, exclude = [], floor = 0, now = Date.now() } = opts;
-  const hits = await index.search(query || '', { k: Math.max(k, 15), now });
+  const hits = await index.search(query || '', { k: Math.max(k, 15), now, ...routeSearch(query || '') });
   let eps = hits.map((h) => h.ep).filter(keep(exclude));
   const lo = Math.max(parseSince(since, now) || 0, floor || 0), hi = parseSince(until, now);
   if (lo) eps = eps.filter((e) => tOf(e) >= lo);

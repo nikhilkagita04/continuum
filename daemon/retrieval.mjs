@@ -1,9 +1,10 @@
 // Retrieval — fuses the cheap tier (Stage 3 hybrid index) with the graph tier
 // (Stage 4 temporal KG), then optionally grounds an answer with an LLM.
 import { assembleContext, contextText } from './context.mjs';
+import { routeSearch } from './stage3/index.mjs';
 
 export async function answerQuery(query, { index, graph, llm, k = 6, now = 0, group = 'default' } = {}) {
-  const hits = await index.search(query, { k, now });
+  const hits = await index.search(query, { k, now, ...routeSearch(query) });   // recency-sensitive queries → recency-weighted
   const facts = graph ? ((await graph.search(query, group, k)).results || []) : [];
   const context = [
     ...facts.map((f) => `fact: ${f.fact}`),                 // structured/temporal first
