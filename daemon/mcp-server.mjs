@@ -83,7 +83,7 @@ async function handle(req) {
       const snap = snapshot(eps, { exclude });
       const prefs = instructionsBlock(activePreferences(eps));  // active standing preferences (approved + auto-applied)
       const instructions = INSTRUCTIONS_BASE + (snap ? `\n\n${snap}` : '') + (prefs ? `\n\n${prefs}` : '');
-      return { jsonrpc: '2.0', id, result: { protocolVersion: params?.protocolVersion || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'continuum', version: '0.6.0' }, instructions } };
+      return { jsonrpc: '2.0', id, result: { protocolVersion: params?.protocolVersion || '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: 'continuum', version: '0.6.1' }, instructions } };
     }
     case 'tools/list':
       return { jsonrpc: '2.0', id, result: { tools: TOOLS } };

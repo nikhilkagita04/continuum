@@ -2,6 +2,24 @@
 
 All notable changes. Dates are when the work landed; npm releases are tagged per version.
 
+## 0.6.1 — capture quality + retrieval, measured end-to-end
+A measurement-driven pass that moved real numbers: retrieval hit@5 ~60% → ~95%, MRR 0.50 → 0.93,
+and capture unique-token ratio 0.70 → 0.84. The lesson: fixing capture beat any embedding upgrade
+(garbage in, garbage out).
+- **`continuum measure`** — scores retrieval/answer quality over *your own* captured memory: it writes
+  probe questions from your real episodes (ground truth = the source), then reports hit@k / MRR,
+  answer correctness, groundedness, necessity, and latency, plus the weakest probes. Needs a model
+  (Ollama free, or a key). The dial every capture/retrieval change is now gated on.
+- **Capture cleanup.** A **progressive-typing coalescer** collapses the keystroke-by-keystroke OCR
+  garble that piled up when you type into an app (it was ~19% of episodes, e.g. one 3993-token blob at
+  0.03 unique-token ratio). A browser-only **chrome filter** drops tab strips, bookmark bars, and nav
+  toolbars (never touching code/terminal). New **`continuum clean`** salvages or deletes already-polluted
+  episodes (backs up first). New `CONTINUUM_OCR_MINHEIGHT` knob.
+- **Retrieval: Reciprocal Rank Fusion by default.** Fuse the lexical + semantic rankings (Glean-style),
+  with recency/salience as light tie-breakers; weighted mode stays available for recency-dialed use.
+  A/B on a real corpus: hashed→bge-m3→+RRF took hit@5 87% → 93% → 100%. Recommended embedder upgrade:
+  `ollama pull bge-m3`. (An LLM reranker was tested and *dropped* — it damages an already-strong stage.)
+
 ## 0.6.0 — preferences: learn how you want your agents to work
 Beyond *who you are*, Continuum now learns *how you want your agent to work for you* — the standing
 instructions you'd otherwise repeat in every session ("be concise", "run the tests before the PR",
