@@ -58,7 +58,15 @@ func ocr(_ image: CGImage) -> String {
   req.recognitionLevel = (env["CONTINUUM_OCR_LEVEL"] == "fast") ? .fast : .accurate
   req.usesLanguageCorrection = (env["CONTINUUM_OCR_LANGCORRECT"] ?? "1") != "0"
   req.minimumTextHeight = envF("CONTINUUM_OCR_MINHEIGHT", 0)
-  if let langs = env["CONTINUUM_OCR_LANGS"], !langs.isEmpty { req.recognitionLanguages = langs.split(separator: ",").map { String($0) } }
+  if let langs = env["CONTINUUM_OCR_LANGS"], !langs.isEmpty {
+    req.recognitionLanguages = langs.split(separator: ",").map { String($0) }
+  } else {
+    // Auto-detect language across the major scripts Vision supports, so CJK/Cyrillic/Arabic/Thai pages are
+    // captured cleanly instead of garbled as English (English-only read Japanese as "# 8-75553511753";
+    // ja-JP read it perfectly). English/Latin accuracy is unaffected.
+    if #available(macOS 13.0, *) { req.automaticallyDetectsLanguage = true }
+    req.recognitionLanguages = ["en-US", "ja-JP", "zh-Hans", "zh-Hant", "ko-KR", "ru-RU", "ar-SA", "th-TH", "fr-FR", "de-DE", "es-ES", "pt-BR"]
+  }
   try? VNImageRequestHandler(cgImage: image, options: [:]).perform([req])
   let minConf = envF("CONTINUUM_OCR_MINCONF", 0.4)
   // Keep any substantial line (>= minChars, default 3) that isn't symbol-soup. The old "needs >=2 words

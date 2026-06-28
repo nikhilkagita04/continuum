@@ -68,7 +68,8 @@ export async function genProbeQA(ep, llm) {
 // ALL alphanumeric tokens — numbers and 1–2 char tokens ("pt", "ml") are often the discriminating part.
 export const factTokens = (s) => String(s).toLowerCase()
   .replace(/([a-z])([0-9])/g, '$1 $2').replace(/([0-9])([a-z])/g, '$1 $2')
-  .match(/[a-z0-9]+/g) || [];
+  // Latin/digit words OR single CJK/Hangul chars (those scripts have no word spaces, so match per-glyph)
+  .match(/[a-z0-9]+|[぀-ヿ㐀-䶿一-鿿가-힯]/g) || [];
 
 // Deterministic, numeric-aware fact check: is the expected FACT actually present in `text`?
 //   • every numeric token must match EXACTLY    ("4.5K" ≠ "4500"),

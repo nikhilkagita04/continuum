@@ -124,6 +124,14 @@ func ocr(_ image: CGImage) -> String {
   // Skip tiny UI chrome (browser tab strip, bookmarks, status bars): it OCRs poorly and jitters frame
   // to frame, so it both adds noise AND defeats line-novelty dedup. Fraction of image height; 0 = off.
   req.minimumTextHeight = Float(ProcessInfo.processInfo.environment["CONTINUUM_OCR_MINHEIGHT"] ?? "0") ?? 0
+  // Auto-detect language so CJK/Cyrillic/Arabic/Thai pages are captured cleanly, not garbled as English
+  // (English-only read Japanese as "# 8-75553511753"; auto-detect reads it perfectly; English unaffected).
+  if let langs = ProcessInfo.processInfo.environment["CONTINUUM_OCR_LANGS"], !langs.isEmpty {
+    req.recognitionLanguages = langs.split(separator: ",").map { String($0) }
+  } else {
+    if #available(macOS 13.0, *) { req.automaticallyDetectsLanguage = true }
+    req.recognitionLanguages = ["en-US", "ja-JP", "zh-Hans", "zh-Hant", "ko-KR", "ru-RU", "ar-SA", "th-TH", "fr-FR", "de-DE", "es-ES", "pt-BR"]
+  }
   try? VNImageRequestHandler(cgImage: image, options: [:]).perform([req])
   let minConf = Float(ProcessInfo.processInfo.environment["CONTINUUM_OCR_MINCONF"] ?? "0.4") ?? 0.4
   var boxes: [OBox] = []
