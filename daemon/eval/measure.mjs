@@ -143,13 +143,13 @@ export async function generateProbesQA(episodes = [], llm, { n = 12, pool = 60, 
 // a different *family* (no self-preference bias); baselineLlm = same family as the answerer (so the
 // necessity metric isolates "retrieval added value", not "a weaker model is worse"). All default to
 // `llm` for back-compat — but a single-model run is labeled self-graded/provisional.
-export async function scoreProbes(probes = [], { index, llm, answerLlm, judgeLlm, baselineLlm, k = 5, now = 0 } = {}) {
+export async function scoreProbes(probes = [], { index, llm, answerLlm, judgeLlm, baselineLlm, k = 5, now = 0, searchOpts = {} } = {}) {
   const answer = answerLlm || llm, judge = judgeLlm || llm, baseline = baselineLlm || llm;
   const split = !!(answerLlm && judgeLlm && answerLlm !== judgeLlm);
   const rows = [];
   for (const p of probes) {
     const t0 = (globalThis.performance && performance.now) ? performance.now() : 0;
-    const hits = await index.search(p.q, { k, now, ...routeSearch(p.q) });   // SAME path production ships
+    const hits = await index.search(p.q, { k, now, ...routeSearch(p.q), ...searchOpts });   // SAME path production ships (+ optional reranker)
     const latency = ((globalThis.performance && performance.now) ? performance.now() : 0) - t0;
 
     const rank = hits.findIndex((h) => h.ep.content_hash === p.sourceId);
