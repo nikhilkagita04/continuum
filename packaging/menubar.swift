@@ -24,7 +24,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let res = Bundle.main.resourcePath ?? "."
     let t = Process()
     t.executableURL = URL(fileURLWithPath: "/bin/zsh")
-    t.arguments = ["-lc", "\"\(res)/capture\" | /usr/bin/env node \"\(res)/daemon/pipeline.mjs\""]
+    t.arguments = ["-lc", "\"\(res)/screen\" | /usr/bin/env node \"\(res)/daemon/pipeline.mjs\""]
     do { try t.run(); task = t; item.button?.title = "●" } catch { item.button?.title = "⚠" }
   }
 
