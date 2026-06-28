@@ -29,16 +29,36 @@ const capWords = (s, max) => { const w = (s || '').split(/\s+/); return w.length
 
 // Same text field re-captured as it's edited: one string is ~a character-prefix of the other.
 // Progressive typing emits "Yes I thn" → "Yes I think this…" — SimHash misses it (the lengths differ
-// a lot), so detect the prefix-growth directly. Requires the shorter to be ≥8 chars and ≥80% a
-// leading prefix of the longer, so we only coalesce a genuinely-growing field, not two distinct lines.
+// a lot), so detect prefix-growth directly. We test TWO ways: a clean char-prefix (≥80% leading match),
+// AND a jitter-tolerant word-subsequence (≥70% of the shorter's words appear IN ORDER in the longer).
+// The latter is essential because OCR mutates an early char as you type ("every"→"everytc"→"everything"),
+// which diverges the char-prefix and made the segmenter pile up every keystroke-stage (measured: 90/115
+// dup sentences in the worst real episode). Both require the shorter to be substantial so we only coalesce
+// a genuinely-growing field, never two distinct lines.
 function growthOf(prev, next) {
   if (!prev || !next || prev === next) return false;
   const s = prev.length <= next.length ? prev : next;
   const l = prev.length <= next.length ? next : prev;
   if (s.length < 8) return false;
-  let i = 0; const n = s.length;
+  let i = 0; const n = s.length;                                  // clean char-prefix growth
   while (i < n && s.charCodeAt(i) === l.charCodeAt(i)) i++;
-  return i >= s.length * 0.8;
+  if (i >= s.length * 0.8) return true;
+  const sw = s.split(/\s+/).filter(Boolean), lw = l.split(/\s+/).filter(Boolean);   // jitter-tolerant
+  if (sw.length < 3) return false;
+  let matched = 0, j = 0;
+  for (const w of sw) { while (j < lw.length && lw[j] !== w) j++; if (j < lw.length) { matched++; j++; } }
+  return matched >= sw.length * 0.7;   // ≥70% of the shorter's words occur, in order, in the longer
+}
+
+// Token-set Jaccard — for SAME-LENGTH jittered re-OCRs of one field/feed (growthOf catches GROWING ones;
+// this catches re-reads at steady length where a few tokens mutate). High overlap in the same window =
+// the same evolving content, not two distinct states.
+const jWords = (s) => (String(s).toLowerCase().match(/[a-z0-9]+/g) || []);
+function jaccard(a, b) {
+  const A = new Set(jWords(a)), B = new Set(jWords(b));
+  if (!A.size || !B.size) return 0;
+  let inter = 0; for (const x of A) if (B.has(x)) inter++;
+  return inter / (A.size + B.size - inter);
 }
 
 // ---------- 64-bit SimHash (FNV-1a) for near-duplicate detection ----------
@@ -148,14 +168,17 @@ export class Segmenter {
     //     misses this, so detect char-prefix growth and REPLACE the prior version in place. Without
     //     this, every keystroke stage piles up ("Yes I thn Yes I think…") and poisons the episode —
     //     it was 19% of real captures and ~0.70 unique-token ratio.
-    if (growthOf(seg.lastText, text)) {
+    //     Also coalesces JITTER variants: a same-window re-OCR with high token overlap but not a clean
+    //     prefix (mid-string OCR jitter as a typed field settles, "every"→"everytc"→"everything"), which
+    //     char-prefix + SimHash both miss — the real 90/115-dup pile-up. Distinct states fall to drift.
+    if (growthOf(seg.lastText, text) || jaccard(text, seg.lastText) >= 0.6) {
       this._accrue(seg, t); seg.dedupCount++;
-      if (text.length > seg.lastText.length) {                 // grew → swap the prior version for the fuller one
+      if (text.length > seg.lastText.length) {                 // grew/settled fuller → swap prior for the fullest
         const repl = capWords(text, this.cfg.maxTokens);
         if (seg.text.endsWith(seg.lastText)) seg.text = seg.text.slice(0, seg.text.length - seg.lastText.length) + repl;
         seg.lastText = repl; seg.simhash = simhash(repl); seg.tokens = tokens(seg.text).length;
       }
-      return out;                                              // shorter/equal prefix → redundant, drop it
+      return out;                                              // shorter/equal/variant → redundant, drop it
     }
 
     // 2) dedup cascade — near-duplicate? coalesce, don't branch

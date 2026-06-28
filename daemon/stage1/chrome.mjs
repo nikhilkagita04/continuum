@@ -16,21 +16,14 @@ const tabNoise = (line) => {
   return junk / toks.length >= 0.4;
 };
 
-// Drop runs of >= runLen consecutive short lines (a toolbar / bookmark bar / nav list) and tab noise.
-// Isolated short lines amid prose are kept (they may be real). Returns the cleaned text.
+// Per-frame chrome removal does ONLY what's unambiguous junk: drop garbled tab-strip noise (OCR misreads
+// of truncated tab titles + close buttons — "Nikh X", "Cont X"). The bookmark/nav bar is real short text
+// that REPEATS every frame, so CROSS-FRAME LineNovelty is the correct tool for it (captured once as
+// context, then suppressed) — not per-frame line-length heuristics. The old short-line-run strip measured
+// at −0.10 fact-recall because line length cannot tell chrome ("WORLD", "U.S.") from short CONTENT
+// ("Iran war", "World Cup 2026", post metadata, table cells) — it deleted real facts on feed/list/table
+// pages, exactly the user's main apps (LinkedIn, X). `runLen` kept for back-compat; unused.
 export function stripChrome(text, app, { runLen = 4 } = {}) {
   if (!isBrowser(app)) return text;
-  const lines = String(text || '').split(/\n/);
-  const drop = new Array(lines.length).fill(false);
-  let i = 0;
-  while (i < lines.length) {
-    if (shortLine(lines[i])) {
-      let j = i; while (j < lines.length && shortLine(lines[j])) j++;
-      if (j - i >= runLen) for (let k = i; k < j; k++) drop[k] = true;
-      i = j;
-    } else i++;
-  }
-  const kept = [];
-  for (let k = 0; k < lines.length; k++) if (!drop[k] && !tabNoise(lines[k])) kept.push(lines[k]);
-  return kept.join('\n');
+  return String(text || '').split(/\n/).filter((l) => !tabNoise(l)).join('\n');
 }

@@ -21,6 +21,23 @@ ok('keeps the full final text', out[0] && out[0].text === full, out[0] && JSON.s
 ok('no keystroke-stage garble piled up', out[0] && !/think this sho\b.*think this should/i.test(out[0].text));
 ok('clean unique-token ratio (not the ~0.03 garble)', out[0] && uniqRatio(out[0].text) > 0.85, out[0] && uniqRatio(out[0].text).toFixed(2));
 
+// THE real case the old char-prefix growthOf missed: same-length re-OCRs with mid-string jitter as the
+// typed field settles ("every"→"everytc"→"everything"). Must still collapse to ONE clean episode.
+const segJ = new Segmenter({ minActiveMs: 0, minTokens: 0, idleMs: 90_000 });
+const jittered = [
+  'Now lets go ahead and implement carefully and thoughtfully',
+  'Now lets go ahead and implement erverytcarefully and thoughtfully',
+  'Now lets go ahead and implement ecarefully and thoughtfully',
+  'Now lets go ahead and implement everything carefully and thoughtfully',
+  'Now lets go ahead and implement everything carefully and thoughtfully as a principal engineer',
+];
+let outJ = [];
+jittered.forEach((s, i) => { outJ = outJ.concat(segJ.ingest({ t: i * 1000, source: 'ocr', app: 'Claude', window_id: 'wj', text: s })); });
+outJ = outJ.concat(segJ.flush());
+ok('jittered typing collapses to ONE episode', outJ.length === 1, `got ${outJ.length}`);
+ok('no jittered pile-up (high unique-token ratio)', outJ[0] && uniqRatio(outJ[0].text) > 0.7, outJ[0] && uniqRatio(outJ[0].text).toFixed(2));
+ok('settles to the fullest, no jitter remnants', outJ[0] && /principal engineer/.test(outJ[0].text) && !/erverytc|ecarefully/.test(outJ[0].text), outJ[0] && outJ[0].text);
+
 // guard: genuinely different lines in the same window must NOT be coalesced away
 const seg2 = new Segmenter({ minActiveMs: 0, minTokens: 0, idleMs: 90_000, driftSimMin: 0 });
 let out2 = [];

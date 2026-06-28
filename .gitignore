@@ -44,3 +44,5 @@ daemon/ax.swift
 daemon/ocr.swift
 daemon/audio.swift
 daemon/AUDIO.md
+daemon/stage1/ocr-image
+daemon/stage1/ax-dump

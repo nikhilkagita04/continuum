@@ -16,7 +16,7 @@ const hits = [
 
 const a = assembleContext(hits, { maxSnippets: 5, near: 6 });
 ok('drops the near-duplicate snippet', a.length === 3, `kept ${a.length}`);
-ok('trims browser chrome from a kept snippet', /pitch deck visuals/.test(contextText(a)) && !/All Bookmarks|UMass/.test(contextText(a)));
+ok('trims garbled tab-strip noise, keeps content', /pitch deck visuals/.test(contextText(a)) && !/Move x|Nikh X|UMass/.test(contextText(a)));
 ok('keeps the distinct snippets', /segmentation state machine/.test(contextText(a)) && /npm test/.test(contextText(a)));
 ok('preserves rank order (first hit first)', a[0].ep.text.startsWith('implementing the segmentation'));
 
