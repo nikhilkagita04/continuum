@@ -38,6 +38,15 @@ ok('jittered typing collapses to ONE episode', outJ.length === 1, `got ${outJ.le
 ok('no jittered pile-up (high unique-token ratio)', outJ[0] && uniqRatio(outJ[0].text) > 0.7, outJ[0] && uniqRatio(outJ[0].text).toFixed(2));
 ok('settles to the fullest, no jitter remnants', outJ[0] && /principal engineer/.test(outJ[0].text) && !/erverytc|ecarefully/.test(outJ[0].text), outJ[0] && outJ[0].text);
 
+// guard: numeric facts must NOT be coalesced away — two high-overlap variants differing only in a NUMBER
+// are DIFFERENT facts (a counter tick / price change), not OCR jitter. Both numbers must survive.
+const segN = new Segmenter({ minActiveMs: 0, minTokens: 0, idleMs: 90_000, driftSimMin: 0 });
+let outN = [];
+outN = outN.concat(segN.ingest({ t: 0, source: 'ocr', app: 'Google Chrome', window_id: 'wn', text: 'quarterly revenue this period was 4 million dollars total' }));
+outN = outN.concat(segN.ingest({ t: 1000, source: 'ocr', app: 'Google Chrome', window_id: 'wn', text: 'quarterly revenue this period was 7 million dollars total' }));
+outN = outN.concat(segN.flush());
+ok('numeric variants are NOT coalesced (both numbers kept)', outN.length === 1 && /\b4\b/.test(outN[0].text) && /\b7\b/.test(outN[0].text), outN[0] && outN[0].text);
+
 // guard: genuinely different lines in the same window must NOT be coalesced away
 const seg2 = new Segmenter({ minActiveMs: 0, minTokens: 0, idleMs: 90_000, driftSimMin: 0 });
 let out2 = [];

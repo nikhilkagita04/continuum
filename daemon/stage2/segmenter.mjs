@@ -60,6 +60,12 @@ function jaccard(a, b) {
   let inter = 0; for (const x of A) if (B.has(x)) inter++;
   return inter / (A.size + B.size - inter);
 }
+// Numbers carry meaning a token-overlap can't see: "$4M" vs "$7M" are 90% identical but DIFFERENT facts.
+// So two same-length variants may only be coalesced as jitter if their digit-token SETS match — otherwise
+// we'd silently drop a number (a counter tick, a price change, a different stat). Growth is exempt: it
+// keeps the fuller string, a superset, so no number is lost.
+const numSet = (s) => new Set(jWords(s).filter((w) => /[0-9]/.test(w)));
+function sameNums(a, b) { const A = numSet(a), B = numSet(b); if (A.size !== B.size) return false; for (const x of A) if (!B.has(x)) return false; return true; }
 
 // ---------- 64-bit SimHash (FNV-1a) for near-duplicate detection ----------
 const MASK64 = 0xffffffffffffffffn;
@@ -171,7 +177,7 @@ export class Segmenter {
     //     Also coalesces JITTER variants: a same-window re-OCR with high token overlap but not a clean
     //     prefix (mid-string OCR jitter as a typed field settles, "every"→"everytc"→"everything"), which
     //     char-prefix + SimHash both miss — the real 90/115-dup pile-up. Distinct states fall to drift.
-    if (growthOf(seg.lastText, text) || jaccard(text, seg.lastText) >= 0.6) {
+    if (growthOf(seg.lastText, text) || (jaccard(text, seg.lastText) >= 0.6 && sameNums(text, seg.lastText))) {
       this._accrue(seg, t); seg.dedupCount++;
       if (text.length > seg.lastText.length) {                 // grew/settled fuller → swap prior for the fullest
         const repl = capWords(text, this.cfg.maxTokens);
