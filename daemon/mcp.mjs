@@ -55,8 +55,8 @@ const tOf = (e) => e.end || e.start || 0;
 
 // recall — semantic search + filters → attributed snippets.
 export async function recall(index, episodes, opts = {}) {
-  const { query, since, until, apps, sources, k = 5, exclude = [], floor = 0, now = Date.now(), reranker = null, rerankPool = 20 } = opts;
-  const hits = await index.search(query || '', { k: Math.max(k, 15), now, ...routeSearch(query || ''), ...(reranker ? { reranker, pool: rerankPool } : {}) });
+  const { query, since, until, apps, sources, k = 5, exclude = [], floor = 0, now = Date.now() } = opts;
+  const hits = await index.search(query || '', { k: Math.max(k, 15), now, ...routeSearch(query || '') });
   let eps = hits.map((h) => h.ep).filter(keep(exclude));
   const lo = Math.max(parseSince(since, now) || 0, floor || 0), hi = parseSince(until, now);
   if (lo) eps = eps.filter((e) => tOf(e) >= lo);

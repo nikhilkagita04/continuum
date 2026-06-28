@@ -58,8 +58,5 @@
   ],
   "engines": {
     "node": ">=18"
-  },
-  "dependencies": {
-    "@huggingface/transformers": "^3.8.1"
   }
 }

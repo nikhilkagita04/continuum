@@ -42,21 +42,5 @@ console.log('\nStage 3 hybrid index\n');
   ok('general query uses RRF', routeSearch('how does the knowledge graph entity resolution work').fusion === 'rrf');
 }
 
-// reranker stage: an injected (cross-encoder) scorer reorders the widened pool; failures degrade safely
-{
-  const idx = new HybridIndex({ embed });
-  await idx.add({ id: 'x', text: 'deploying the service to the cluster', salience: 0.5, end: 1 });
-  await idx.add({ id: 'y', text: 'buildkite pipeline green, shipped', salience: 0.5, end: 1 });   // semantically the answer
-  await idx.add({ id: 'z', text: 'lunch and a coffee break downtown', salience: 0.5, end: 1 });
-  // mock cross-encoder: scores docs mentioning "buildkite" highest (simulates semantic relevance)
-  const reranker = async (_q, docs) => docs.map((d) => /buildkite/.test(d) ? 9 : 0);
-  const r = await idx.search('what tool do I deploy with', { k: 3, now: 1, reranker, pool: 3 });
-  ok('reranker promotes the semantically-relevant doc to top', r[0].ep.id === 'y', `top=${r[0].ep.id}`);
-  // graceful fallback: a throwing reranker must not break search
-  const boom = async () => { throw new Error('model unavailable'); };
-  const r2 = await idx.search('what tool do I deploy with', { k: 3, now: 1, reranker: boom, pool: 3 });
-  ok('reranker failure degrades to first-stage (no throw)', r2.length === 3);
-}
-
 console.log(`\n${fail === 0 ? '✅' : '❌'}  ${pass} passed, ${fail} failed\n`);
 process.exit(fail === 0 ? 0 : 1);
