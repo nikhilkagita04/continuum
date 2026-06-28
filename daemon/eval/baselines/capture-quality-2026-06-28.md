@@ -1,0 +1,51 @@
+# Capture quality — OCR SOTA pass (2026-06-28)
+
+S0 found capture quality is the bottleneck ("retrieved 76% / answered ~40%" — facts present in noisy OCR
+token-soup but not cleanly answerable). This pass measured and fixed it. **Aggregate-only record (no
+screenshots/PII committed); reproduce locally with the capture gate.**
+
+## The gate
+Episode-level, DETERMINISTIC **fact-recall**: a vision model mints the visible FACTS from a screenshot
+(ground truth), then each capture config is scored by the fraction present in the captured text via
+`answerInSource` (numeric-aware, now Unicode-aware token match). Deterministic scoring; vision only mints
+facts. Run over 14 diverse surfaces (Wikipedia, Hacker News, GitHub code, Python/MDN docs, arXiv, AP News,
+YouTube, Reddit, a Wikipedia data table, StackOverflow, **System Settings (native)**, French/German/**Japanese**).
+
+## Result — fact-recall (does the capture contain the answerable on-screen facts)
+| | mean |
+|---|---|
+| baseline (old shipped: naive sort + aggressive stripChrome) | ~0.86 |
+| **shipped now (XY-cut + relaxed filter + light chrome + auto-lang)** | **~0.97** |
+| AX-tree-as-primary (the prior panel's thesis) | 0.31 — refuted by measurement |
+
+Per-set: 5 web pages 0.96 · 6 web+native 0.98 · 3 non-English 0.98.
+
+## Fixes shipped (each measured, committed, unit-tested)
+1. **Completeness** (the dominant "incompleteness" cause): the OCR line filter `words>=2 || count>=16`
+   dropped short single-word facts (names/numbers/labels). Relaxed to keep any 3+ char non-glyph-soup line.
+   fact-recall 0.80 → 0.96.
+2. **Reading order**: recursive XY-cut column/block layout analysis replaces the naive 60-band (row,x) sort
+   (sidebars/columns/overlays no longer interleaved). reading_order 48 → 91 (vision judge).
+3. **Chrome**: `stripChrome` was deleting short CONTENT (headlines/list/table rows) as if chrome (−0.10);
+   now drops only garbled tab-strip noise — repeated bookmark/nav chrome is `LineNovelty`'s cross-frame job.
+4. **Repetition** (the "same sentence multiple times" symptom): segmenter growth-coalesce was strict
+   char-prefix, defeated by mid-string OCR jitter ("every"→"everytc") so typed fields piled up every
+   keystroke stage (90/115 dup sentences worst case). Added word-subsequence + token-Jaccard variant
+   coalescing — with a **numeric guard** (two variants differing only in a number are NOT coalesced, so a
+   number is never silently dropped). Typed fields collapse to one clean episode.
+5. **Non-English**: English-only Vision garbled CJK ("# 8-75553511753"); default to
+   `automaticallyDetectsLanguage` + a broad candidate list. Japanese reads cleanly (0.93); Latin unaffected.
+6. **Ship-parity**: the `.app` bundled `capture.swift` = AX-ONLY (the 0.31 path); now ships `screen` (OCR).
+
+## AX vs OCR (the prior panel's strategy question), settled by measurement
+Head-to-head: OCR+XY-cut beat the shipped AX extractor 5/5 pages (answerable 88 vs 19). AX is incomplete
+(drops <3-word facts), UNRELIABLE (a news page gave 168 lines one run, 1 the next), captures off-screen DOM.
+On the gate: OCR 0.80, AX 0.31, OCR+AX 0.84 — AX adds nothing once OCR is complete. **AX-as-primary refuted;**
+the OCR path, fixed, is the SOTA direction.
+
+## Still open (follow-ups)
+- Commit the capture gate as a runnable harness with LOCAL-by-default fact-gen (vision via local model;
+  cloud only on synthetic/consented fixtures — never bulk-upload the live store).
+- END-TO-END re-gate: re-capture a corpus through the NEW pipeline and confirm S0 answer-correctness rises
+  to the magic bar (>=0.75; was ~0.40 on the pre-fix store). Requires a fresh capture window.
+- Minor: `SELF_MARKERS` self-capture guard is brittle string-matching; `stripChrome` `runLen` param is dead.
