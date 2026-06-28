@@ -78,6 +78,42 @@ export function llmClient({ provider = 'openai', apiKey, model, base }) {
   };
 }
 
+// PAID / quality, eval-grade JUDGE: Google Gemini via its OpenAI-compatible endpoint.
+// The cross-family eval judge (answer ≠ judge family ⇒ no self-preference bias, eval-plan §0.2).
+// Gemini 2.5 models "think" by default, silently spending the whole max_tokens budget on hidden
+// reasoning and returning EMPTY content at small budgets (a 60-token probe call came back ''
+// with completion_tokens:0, finish_reason:length). The judge/probe roles want short deterministic
+// verdicts, not chain-of-thought — so we pin reasoning_effort:'none', which makes tiny budgets work.
+// minIntervalMs paces requests under the Gemini FREE-TIER cap (20 req/min for gemini-2.5-flash):
+// ~3.2s spacing ≈ 18.75/min stays safely under it, so a long eval loop runs slower but never
+// collapses to empty verdicts. On a 429 we still honor the API's own "retry in Xs" hint.
+export function geminiLLM({ apiKey, model = 'gemini-2.5-flash', base = 'https://generativelanguage.googleapis.com/v1beta/openai', retries = 5, minIntervalMs = 3600 } = {}) {
+  const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+  let nextAt = 0;   // client-side throttle gate, shared across all calls from this client
+  return async (system, user, maxTokens = 400) => {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const wait = nextAt - Date.now(); if (wait > 0) await sleep(wait);
+      nextAt = Date.now() + minIntervalMs;   // reserve the next slot before firing
+      const r = await fetch(base + '/chat/completions', {
+        method: 'POST', headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, max_tokens: maxTokens, reasoning_effort: 'none', messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+      });
+      // Gemini returns errors as a bare array ([{ error: {...} }]); 429 (rate limit) is transient.
+      if (r.status === 429 || r.status >= 500) {
+        if (attempt >= retries) return '';
+        const t = await r.text().catch(() => '');
+        const m = /retry in ([\d.]+)s/i.exec(t);   // respect the server's suggested delay when present
+        await sleep(m ? Math.ceil(parseFloat(m[1]) * 1000) + 500 : 2000 * 2 ** attempt);
+        continue;
+      }
+      const j = await r.json();
+      if (Array.isArray(j)) { if (attempt >= retries) return ''; await sleep(2000 * 2 ** attempt); continue; }
+      return j.choices?.[0]?.message?.content ?? '';
+    }
+    return '';
+  };
+}
+
 // FREE / private: local LLM via Ollama (summaries on-device). Graph extraction still
 // wants a frontier model — local models can't satisfy the strict extraction schemas.
 export function ollamaLLM({ model = 'llama3.1', base = 'http://localhost:11434' } = {}) {
