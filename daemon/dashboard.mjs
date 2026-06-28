@@ -414,7 +414,7 @@ function renderInsights(){
     b.innerHTML='<div class=seclabel>Today</div>'+
       (d.summary?'<div class=summary>'+esc(d.summary)+'</div>':'<div class=muted>You were active for '+dur(d.activeMs)+' today.</div>')+
       where+rem+
-      '<div class=foot>'+ICON.lock+'Everything stays on this Mac.</div>';
+      '<div class=foot>'+ICON.lock+'Stored on this Mac — only what you ask is sent to your model.</div>';
   });
 }
 function runAsk(q){
@@ -454,7 +454,7 @@ function renderPrivacy(){
   var excl=st.exclude.length?'<div class=tags>'+st.exclude.map(function(a){return '<span class=taga>'+esc(a)+'<span class=x data-unexcl="'+esc(a)+'">'+ICON.x+'</span></span>';}).join('')+'</div>':'<p>No apps excluded — everything visible is captured.</p>';
   var opts=st.apps.filter(function(a){return st.exclude.indexOf(a)<0;}).map(function(a){return '<option value="'+esc(a)+'">'+esc(a)+'</option>';}).join('');
   main.innerHTML='<button class=back id=back>'+ICON.back+'Today</button>'+
-    '<div class=vh>Privacy &amp; data</div><div class=vsub>Your memory, on your terms. Nothing leaves this Mac.</div>'+
+    '<div class=vh>Privacy &amp; data</div><div class=vsub>Your memory, on your terms — stored on this Mac; only what you ask is sent to the model you choose.</div>'+
     '<div class=block><div class=line><span class=k>Capture</span><div class="sw'+(st.paused?'':' on')+'" id=pausesw><span class=knob></span></div></div>'+
       '<p style="margin-top:12px;margin-bottom:0">'+(st.paused?'Paused — nothing is being recorded.':'Active — capturing what you see.')+'</p></div>'+
     '<div class=block><h3>Excluded apps</h3><p>Apps Continuum should never capture. Applies next time you start capture.</p>'+excl+

@@ -34,12 +34,12 @@ continuum mcp-install  # connect it to Claude Desktop, then restart Claude
 
 ## What you get
 
-- **Sees and hears your screen** — on-device OCR of the focused window (deduped to content, not noise), plus optional meeting transcription (mic + system audio, speaker-tagged, transcribe-then-delete).
+- **Sees your screen** — on-device OCR of the focused window (deduped to content, not noise).
 - **Understands who you are** — an out-of-band *dreaming* pass consolidates the raw firehose into small, cited memory files (who you are · projects · people · taste · decisions) your agent reads to genuinely understand you, not just recall moments (`continuum dream` · `continuum memory`).
 - **Learns how you work** — standing preferences like *"be concise"* or *"run the tests before the PR"* apply to every agent automatically; you stay in control (dashboard or `continuum preferences`).
-- **Local-first & read-only to agents** — everything lives in `~/.continuum`; PII redacted, credential managers excluded; the agent only *reads* your memory, so a prompt-injected agent can't poison it. Nothing leaves your machine.
+- **Local-first & read-only to agents** — your memory lives in `~/.continuum` and the agent only *reads* it (a prompt-injected agent can't poison it). Capture, search, and indexing run on-device; only the snippets your question needs — and the scheduled *dream* digest — are sent to the model you choose, through best-effort secret/PII redaction. We don't claim *nothing* leaves; we tell you exactly what does.
 
-**Free & local:** capture, retrieval (hybrid `bge-m3` + RRF), and preferences run on-device for free. **Deep memory (dreaming)** needs a *capable* model — a strong local instruct model, or an **OpenAI / Anthropic** key.
+**Free & local:** capture, retrieval (hybrid lexical + local embeddings + RRF), and preferences run on-device for free. **Deep memory (dreaming)** needs a *capable* model — a strong local instruct model, or an **OpenAI / Anthropic** key.
 
 ## How it works
 

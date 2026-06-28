@@ -106,7 +106,7 @@ async function start() {
 
   const p = new Pipeline({
     embed: deps.embed,
-    segmenterOpts: { fuseAudio: cfg.capture.audio },   // #11: bind spoken utterances to the active visual segment
+    segmenterOpts: { fuseAudio: false },   // audio capture removed (legal bright line: ambient audio is off + compile-time-absent)
     onEpisode: (ep) => { appendEpisode(ep); if (verbose) console.error(`  episode [${ep.app}] ${ep.close_reason} sal=${ep.salience} ${ep.text.slice(0, 70)}…`); },
   });
 
@@ -126,14 +126,7 @@ async function start() {
     const child = spawn(bin, [], { stdio: ['ignore', 'pipe', 'inherit'], env });
     createInterface({ input: child.stdout }).on('line', onLine);
 
-    if (cfg.capture.audio) {   // #10: opt-in meeting capture (mic + system audio), on-device, transcribe-then-delete
-      const abin = ensureHelper('audio');
-      if (abin) {
-        const ac = spawn(abin, [], { stdio: ['ignore', 'pipe', 'inherit'], env });
-        createInterface({ input: ac.stdout }).on('line', onLine);
-        console.error('  + audio capture on (meetings; on-device, transcribe-then-delete)');
-      }
-    }
+    // (audio capture removed — ambient mic/system-audio recording is a legal bright line; compile-time-absent)
   }
 
   if (cfg.files.watch.length) { watchFiles(cfg.files.watch, ingest); console.error(`  + watching files in: ${cfg.files.watch.join(', ')}`); }

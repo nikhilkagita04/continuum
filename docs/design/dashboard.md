@@ -25,7 +25,8 @@ Apple-calm — a quiet, trustworthy place for your memory, not a SaaS dashboard.
    focus/citation only — *no brand color*. Big air, tight type, hairline rows instead of boxes.
 5. **Calm and native.** Follows the system light/dark (`prefers-color-scheme`) with a manual override;
    SF-style system font; quiet motion. Looks at home on macOS.
-6. **Trust is ambient & honest.** "Everything stays on this Mac" anchor; delete one tap from any
+6. **Trust is ambient & honest.** "Stored on this Mac — only what you ask is sent to your model" anchor
+   (never "nothing leaves" — that would be false the moment you ask); delete one tap from any
    moment; ask degrades gracefully (shows matching moments) when no model is configured.
 
 ## 2. The home (insights + ask)
@@ -35,7 +36,7 @@ Apple-calm — a quiet, trustworthy place for your memory, not a SaaS dashboard.
 - **Today** — a plain-language recap (LLM-written when a model is set; a factual one-liner otherwise),
   a **where-your-time-went** list (top apps, hairline bars, the top one inked), and **Worth
   remembering** — the 2–3 most salient moments, lightly tagged (*decision* / *open loop*).
-- **Footer** — "🔒 Everything stays on this Mac."
+- **Footer** — "🔒 Stored on this Mac — only what you ask is sent to your model."
 - **Ask result** — replaces Today with a grounded **answer + inline `[n]` citations** that jump to the
   numbered **source moments** (or, with no model, the matching moments + an honest note). "Back to today" returns.
 
