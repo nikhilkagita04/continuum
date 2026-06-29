@@ -56,6 +56,28 @@ Conclusion: capture quality is SOTA and it moved end-to-end answering 0.40 → 0
 full magic bar is **retrieval precision over a coherent corpus** — a downstream lever, and it needs a real
 re-captured store to measure fairly (the 14-unrelated-pages proxy under-states retrieval).
 
+## Native dev apps (same process, measured)
+Extended the gate to native developer apps (captured by CGWindowList window-id, focus-independent).
+Privacy-safe set — **mean fact-recall 0.94**:
+| app | fact-recall | |
+|---|---|---|
+| Terminal (git log output) | 1.00 | |
+| Activity Monitor (process table) | 1.00 | |
+| Finder (file list) | 1.00 | |
+| System Settings | 1.00 | (earlier set) |
+| Cursor (start screen) | 0.93 | |
+| Cursor (repo / file-tree + code) | 0.79 | only misses = macOS keyboard glyphs (⌘/⌥, unreadable by Vision, not real facts) + the tiny git-branch in the status bar (Vision resolution limit) |
+
+The capture config (XY-cut + relaxed short-fact filter + auto-language) generalizes to native apps unchanged —
+no native-specific OCR work was needed. Gate refinements this round: `stripChrome` must never touch native
+apps (it only acts on browsers in production; the gate now measures raw OCR for the presence metric), and
+`tabNoise` now requires >=2 junk tokens so single-arrow content lines survive (+0.05 recall).
+
+**Privacy lesson (important):** opening native apps shows whatever the user already had open — Sublime
+surfaced private scratch notes, Notes surfaced private content. Those were excluded from the eval. The
+committed capture gate is **local-by-default** (Ollama vision, no egress) precisely so a real personal
+store is never bulk-uploaded; cloud fact-gen is opt-in for synthetic/consented surfaces only.
+
 ## Still open (follow-ups)
 - Commit the capture gate as a runnable harness with LOCAL-by-default fact-gen (vision via local model;
   cloud only on synthetic/consented fixtures — never bulk-upload the live store).
