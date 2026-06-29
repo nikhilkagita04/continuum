@@ -104,6 +104,19 @@ So the headline is not "IDEs are solved" — it's "IDE chrome/dialogs + one real
 order — the most label-dense native layout, and it's not a problem. Two more apps (Script Editor, Automator)
 were launched but only surfaced a file-OPEN dialog showing personal folder names — skipped, not captured.
 
+**Third wave (→ 17 native apps + 3 comms):** Dictionary **1.00**, Shortcuts **0.86** (starter/default shortcuts —
+non-private), Grapher OCR-complete (13/13 lines: 2D/3D Graph, Default, Margins, Classic, Polar, Lin-Log … —
+its gate 0.00 is a fact-gen ARTIFACT: cloud minted 0 facts on the sparse axis image, not an OCR miss). Full
+native list now: Cursor, Terminal, Activity Monitor, Finder, System Settings, Console, Xcode(dialog), Android
+Studio, Preview, TextEdit, Disk Utility, Instruments, Font Book, Create ML, Dictionary, Shortcuts, Grapher.
+
+**Gate-design caveat found this wave: the LOCAL (no-egress) gemma3 scorer is UNRELIABLE on sparse surfaces** —
+it scored Dictionary 0.00 where cloud (Gemini) scored 1.00, because gemma3 hallucinates facts not on a
+near-empty screen and `answerInSource` (correctly) can't match them. The OCR was fine both times. Implication:
+the privacy-safe local scorer is OK for dense surfaces but UNDER-reports on sparse ones; trustworthy gating of
+the live store still needs a better local vision model, or cloud on consented fixtures only. Logged as a
+follow-up — it's a property of the SCORER, not the capture.
+
 **The one surface I could NOT reach, and why (honest):** a real **Xcode code editor** with a project. Xcode
 re-shows its first-launch component-install dialog as a MODAL on every launch; every CLI path (`open -a Xcode
 file`, `xed file`) queues behind it and never reaches the editor, `xcodebuild -runFirstLaunch` needs admin
