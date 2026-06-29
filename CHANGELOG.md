@@ -2,6 +2,12 @@
 
 All notable changes. Dates are when the work landed; npm releases are tagged per version.
 
+## 0.9.1 — docs (2026-06-29)
+- **README now surfaces the trust + dated-context features** that shipped in 0.9.0: a "Cited & dated"
+  line (every recalled moment comes back with an unambiguous calendar date plus an openable citation)
+  and a trust note that names the single audited egress (an append-only ledger of what left the
+  machine, build-enforced) and opt-in encryption at rest. Documentation only — no code change.
+
 ## 0.9.0 — trust & security hardening + always-dated context (2026-06-29)
 A hardening pass that makes the local memory safe to put behind any agent, and puts an unambiguous date
 on every fact.

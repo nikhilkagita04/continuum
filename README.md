@@ -35,9 +35,10 @@ continuum mcp-install  # connect it to Claude Desktop, then restart Claude
 ## What you get
 
 - **Sees your screen** — on-device OCR of the focused window (deduped to content, not noise).
+- **Cited & dated** — every recalled moment comes back with its source app, owner, and an unambiguous calendar date (*"as of Jun 18, 2026"*) plus a citation you can open — so your agent attributes what it says and never passes off a stale fact as current.
 - **Understands who you are** — an out-of-band *dreaming* pass consolidates the raw firehose into small, cited memory files (who you are · projects · people · taste · decisions) your agent reads to genuinely understand you, not just recall moments (`continuum dream` · `continuum memory`).
 - **Learns how you work** — standing preferences like *"be concise"* or *"run the tests before the PR"* apply to every agent automatically; you stay in control (dashboard or `continuum preferences`).
-- **Local-first & read-only to agents** — your memory lives in `~/.continuum` and the agent only *reads* it (a prompt-injected agent can't poison it). Capture, search, and indexing run on-device; only the snippets your question needs — and the scheduled *dream* digest — are sent to the model you choose, through best-effort secret/PII redaction. We don't claim *nothing* leaves; we tell you exactly what does.
+- **Local-first & read-only to agents** — your memory lives in `~/.continuum` and the agent only *reads* it (a prompt-injected agent can't poison it). Capture, search, and indexing run on-device; only the snippets your question needs — and the scheduled *dream* digest — go to the model you choose, through a **single audited egress** (an append-only ledger of exactly what left the machine, enforced by a build-failing check) and best-effort secret/PII redaction. The store can be **encrypted at rest** (opt-in). We don't claim *nothing* leaves; we show you exactly what does.
 
 **Free & local:** capture, retrieval (hybrid lexical + local embeddings + RRF), and preferences run on-device for free. **Deep memory (dreaming)** needs a *capable* model — a strong local instruct model, or an **OpenAI / Anthropic** key.
 
