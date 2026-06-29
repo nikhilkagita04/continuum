@@ -73,10 +73,22 @@ no native-specific OCR work was needed. Gate refinements this round: `stripChrom
 apps (it only acts on browsers in production; the gate now measures raw OCR for the presence metric), and
 `tabNoise` now requires >=2 junk tokens so single-arrow content lines survive (+0.05 recall).
 
-**Privacy lesson (important):** opening native apps shows whatever the user already had open — Sublime
-surfaced private scratch notes, Notes surfaced private content. Those were excluded from the eval. The
-committed capture gate is **local-by-default** (Ollama vision, no egress) precisely so a real personal
-store is never bulk-uploaded; cloud fact-gen is opt-in for synthetic/consented surfaces only.
+**Honest scope (panel caveats):** this is a small INTERNAL measure, not a benchmarked SOTA claim — N=6 apps,
+~14 facts each (~84 facts), one screenshot per app, one fact-gen model; per-app Wilson 95% CI is wide
+(~±0.1+) and there is no native baseline/competitor comparison. It covers **representative text-surface**
+native apps; the HARD surfaces are untested (Xcode dense/custom-rendered, Electron/Slack, Docker/TablePlus
+tiny-monospace tables, Figma canvas ~zero OCR signal). "Config generalizes unchanged" is real for text-grid
+apps; generalization to Xcode/Figma is the untested leap. The real open question — does native capture
+*answer* questions end-to-end — is still unmeasured (see follow-ups).
+
+**Privacy — capture itself is the boundary, not just egress:** opening native apps shows whatever the user
+already had open (Sublime surfaced private scratch; Notes private content) — OCR'd and stored BEFORE any
+model. Fixes: (a) **private-by-default exclusions now expanded** beyond credential managers to private
+messaging (Messages/WhatsApp/Signal/Telegram/FaceTime/Discord) + personal content (Mail/Notes) in
+`screen.swift`, opt-in via `CONTINUUM_INCLUDE`; (b) the committed gate is **local-by-default** (Ollama
+vision, no egress) so a real store is never bulk-uploaded. Still needed before native rollout: a visible
+pause/redaction control, and ideally allowlist-not-denylist for mixed-use apps (a code editor also holds
+private scratch — it can't be denylisted).
 
 ## Still open (follow-ups)
 - Commit the capture gate as a runnable harness with LOCAL-by-default fact-gen (vision via local model;

@@ -1,8 +1,9 @@
 // Capture-quality gate — does the OCR capture actually CONTAIN the answerable facts on screen?
 //
 // For each screenshot: a vision model mints the visible {q, a} FACTS (a = a short literal on-screen
-// string); we OCR the image with the SAME config the daemon ships (daemon/stage1/ocr-image, built from
-// ocr-image.swift == screen.swift's ocr()), then score DETERMINISTIC fact-recall = fraction of facts
+// string); we OCR the image with daemon/stage1/ocr-image (ocr-image.swift — behaviorally equivalent to
+// screen.swift's ocr() at default env: same XY-cut readingOrder, filter, and language config; it adds
+// extra env knobs for sweeps), then score DETERMINISTIC fact-recall = fraction of facts
 // present in the captured text via answerInSource (numeric + Unicode aware). Deterministic scoring; the
 // vision model is used ONLY to mint ground-truth facts.
 //

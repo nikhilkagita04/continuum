@@ -15,11 +15,21 @@ import CoreGraphics
 import ScreenCaptureKit
 import ApplicationServices
 
-// Apps we never capture (credential managers, etc.). Extend via CONTINUUM_EXCLUDE (comma-sep).
+// Apps we never capture BY DEFAULT — private-by-default: credential managers + private messaging +
+// personal-content apps. Capture itself (not just egress) is the privacy boundary, so sensitive apps are
+// excluded before a single frame is OCR'd. Opt IN to any of these with CONTINUUM_INCLUDE (comma-sep);
+// add more exclusions with CONTINUUM_EXCLUDE.
 let EXCLUDED: Set<String> = {
-  var s: Set<String> = ["1Password", "Keychain Access", "Bitwarden", "Dashlane", "LastPass"]
+  var s: Set<String> = [
+    "1Password", "Keychain Access", "Bitwarden", "Dashlane", "LastPass",                 // credential managers
+    "Messages", "WhatsApp", "Signal", "Telegram", "FaceTime", "Discord",                 // private messaging
+    "Mail", "Notes",                                                                      // personal content
+  ]
   if let extra = ProcessInfo.processInfo.environment["CONTINUUM_EXCLUDE"] {
     for a in extra.split(separator: ",") { s.insert(a.trimmingCharacters(in: .whitespaces)) }
+  }
+  if let inc = ProcessInfo.processInfo.environment["CONTINUUM_INCLUDE"] {                 // opt back in
+    for a in inc.split(separator: ",") { s.remove(a.trimmingCharacters(in: .whitespaces)) }
   }
   return s
 }()
