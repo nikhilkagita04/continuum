@@ -68,8 +68,10 @@ Privacy-safe set — **mean fact-recall 0.94**:
 | Cursor (start screen) | 0.93 | |
 | Cursor (repo / file-tree + code) | 0.79 | only misses = macOS keyboard glyphs (⌘/⌥, unreadable by Vision, not real facts) + the tiny git-branch in the status bar (Vision resolution limit) |
 
-The capture config (XY-cut + relaxed short-fact filter + auto-language) generalizes to native apps unchanged —
-no native-specific OCR work was needed. Gate refinements this round: `stripChrome` must never touch native
+**Capture → answer (own-app context, no retrieval): 0.79** across the 70 native facts — ABOVE the 0.75
+magic bar (and higher than web's 0.73). So native captures aren't just complete (0.94 presence); they're
+clean enough that the agent actually answers. The capture config (XY-cut + relaxed short-fact filter +
+auto-language) generalizes to native apps unchanged — no native-specific OCR work was needed. Gate refinements this round: `stripChrome` must never touch native
 apps (it only acts on browsers in production; the gate now measures raw OCR for the presence metric), and
 `tabNoise` now requires >=2 junk tokens so single-arrow content lines survive (+0.05 recall).
 
