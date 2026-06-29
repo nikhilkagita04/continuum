@@ -2,6 +2,27 @@
 
 All notable changes. Dates are when the work landed; npm releases are tagged per version.
 
+## 0.8.0 — SOTA capture quality + honesty/safety hardening (2026-06-28)
+A capture-quality pass (the measured bottleneck — facts were present in noisy OCR token-soup but not
+cleanly *answerable*) plus a hardening pass that removes everything that shouldn't ship.
+
+- **Capture quality → SOTA.** Episode-level fact-recall **~0.86 → ~0.97** across 14 web + 17 native
+  surfaces + synthetic comms; capture→answer **~0.40 → 0.73** (web) / **0.79** (native, above the
+  0.75 bar). Fixes, each measured + unit-tested:
+  - **Completeness** — the OCR line filter dropped short single-word facts (names/numbers/labels); relaxed to keep any 3+ char content line. (0.80 → 0.96)
+  - **Reading order** — recursive **XY-cut** column/block layout replaces the naive (row,x) sort, so sidebars/columns/overlays no longer interleave.
+  - **Chrome** — stop deleting short *content* as if it were nav chrome; drop only garbled tab-strip noise.
+  - **Repetition** — segmenter coalescing now uses word-subsequence + token-Jaccard (with a **numeric guard** so a differing number is never silently merged away); typed fields collapse to one clean episode.
+  - **Non-English** — auto-detect language (CJK/Cyrillic/Arabic) + Unicode-aware fact matching.
+  - **Ship-parity** — the `.app` now bundles the OCR `screen` binary (not the AX-only path).
+- **Honesty / safety hardening** (removing what shouldn't ship):
+  - **Audio capture removed** (measured 237% CPU) — sources + binaries deleted.
+  - **Backend HydraDB mirror + Graphiti sidecar deleted** — no capture is mirrored off-device.
+  - **Browser-extension `<all_urls>` path disabled** — no second, unscoped capture channel.
+  - **Private-by-default exclusions expanded** beyond credential managers to private messaging (Messages/WhatsApp/Signal/Telegram/Discord/FaceTime) + personal content (Mail/Notes); opt-in via `CONTINUUM_INCLUDE`.
+- **Eval, runnable + honest.** Committed the capture-quality gate (**local-by-default** fact-gen, no bulk upload) and an S0 retrieval/answer harness with a **cross-family, deterministic gate-of-record** (`measure.mjs`); aggregate-only baseline records under `daemon/eval/baselines/`.
+- **Packaging.** `files[]` is now an **explicit allowlist** (no recursive `daemon/**` glob).
+
 ## 0.7.1
 - Diagram: renamed "Segment" → "Episodes" (the artifact, not the stage) so the two-tier fork reads itself.
 - Dreaming model guard tightened: error message now says "capable model (8B+ general instruct)" rather than "Pro only", keeping the free local path open.

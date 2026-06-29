@@ -10,13 +10,15 @@ const hit = (app, text) => ({ ep: { app, text } });
 const hits = [
   hit('Code', 'implementing the segmentation state machine with simhash dedup and idle boundaries'),
   hit('Code', 'implementing the segmentation state machine with simhash dedup and idle boundaries today'), // near-dup of #1
-  hit('Google Chrome', 'X Move x\nNikh X\n• UMass\n• Learn\nAll Bookmarks\nThe pitch deck visuals for the design review are due Friday'),
+  hit('Google Chrome', 'Nikh X 4 Verc X\nX Move x |\nThe pitch deck visuals for the design review are due Friday'),
   hit('Terminal', 'npm test runs the full suite with no network access'),
 ];
 
 const a = assembleContext(hits, { maxSnippets: 5, near: 6 });
 ok('drops the near-duplicate snippet', a.length === 3, `kept ${a.length}`);
-ok('trims garbled tab-strip noise, keeps content', /pitch deck visuals/.test(contextText(a)) && !/Move x|Nikh X|UMass/.test(contextText(a)));
+// per-frame stripChrome drops only garbled tab-strip noise (>=2 junk tokens); repeated bookmark/nav
+// lines are LineNovelty's cross-frame job (see chrome.test.mjs / novelty.test.mjs), not assembleContext's.
+ok('trims garbled tab-strip noise, keeps content', /pitch deck visuals/.test(contextText(a)) && !/Verc|Move x/.test(contextText(a)));
 ok('keeps the distinct snippets', /segmentation state machine/.test(contextText(a)) && /npm test/.test(contextText(a)));
 ok('preserves rank order (first hit first)', a[0].ep.text.startsWith('implementing the segmentation'));
 
