@@ -88,6 +88,22 @@ at 0.79** (the lowest real-surface score, and the honest ceiling for "developer 
 So the headline is not "IDEs are solved" — it's "IDE chrome/dialogs + one real dense code editor read at
 0.79–1.00; the heaviest editor states (real Xcode/Android projects) remain the untested leap."
 
+**Additional surfaces captured (window-id, no computer-use):** TextEdit showing Swift code — a *native*
+plain-text/code editor — **0.92** (misses are only code-punctuation glyphs Vision approximates: `(_`, `->`,
+`[`/`]`; every identifier and the fibonacci sequence read). Disk Utility's dense system-metadata table read 41
+lines cleanly (kept LOCAL — not cloud-egressed — because it shows personal disk-image names). So the native
+*editor* class now has two independent confirmations (Cursor 0.79 Electron + TextEdit 0.92 AppKit).
+
+**The one surface I could NOT reach, and why (honest):** a real **Xcode code editor** with a project. Xcode
+re-shows its first-launch component-install dialog as a MODAL on every launch; every CLI path (`open -a Xcode
+file`, `xed file`) queues behind it and never reaches the editor, `xcodebuild -runFirstLaunch` needs admin
+(can't enter a password), and dismissing the modal needs a click/keypress — but computer-use access timed out
+(user away) and Xcode is tier-"click" (no key presses) anyway. Not a punt — a real wall. Mitigant: Xcode's source
+editor is native AppKit text (crisp, high-contrast, standard font) which Vision reads at least as well as
+Cursor's Electron canvas (0.79), so the residual risk that *Xcode specifically* under-reads is low — but it is
+genuinely **unmeasured**. (Also: "Postman" turned out to be a Chrome PWA, i.e. Chromium-rendered — already
+covered by the comms fixtures — not the native app.)
+
 Two new findings: (a) **dark IDE themes read fine** — Android Studio (white-on-near-black) scored 1.00 and Cursor's dark
 editor 0.79–0.93, so the OCR config is not light-theme-dependent. (b) **Apple Vision needs an OPAQUE background**:
 a PDF rendered to PNG with a *transparent* page background (via `sips`) returned ZERO lines, while the SAME PDF
