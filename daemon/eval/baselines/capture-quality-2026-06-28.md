@@ -88,11 +88,21 @@ at 0.79** (the lowest real-surface score, and the honest ceiling for "developer 
 So the headline is not "IDEs are solved" — it's "IDE chrome/dialogs + one real dense code editor read at
 0.79–1.00; the heaviest editor states (real Xcode/Android projects) remain the untested leap."
 
-**Additional surfaces captured (window-id, no computer-use):** TextEdit showing Swift code — a *native*
-plain-text/code editor — **0.92** (misses are only code-punctuation glyphs Vision approximates: `(_`, `->`,
-`[`/`]`; every identifier and the fibonacci sequence read). Disk Utility's dense system-metadata table read 41
-lines cleanly (kept LOCAL — not cloud-egressed — because it shows personal disk-image names). So the native
-*editor* class now has two independent confirmations (Cursor 0.79 Electron + TextEdit 0.92 AppKit).
+**Additional surfaces captured (window-id, no computer-use)** — bringing the named-app total to **14 native +
+3 comms**:
+- TextEdit showing Swift code — a *native* plain-text/code editor — **0.92** (misses only code-punctuation
+  glyphs Vision approximates: `(_`, `->`, `[`/`]`; every identifier + the fibonacci sequence read). The native
+  *editor* class now has TWO independent confirmations (Cursor 0.79 Electron + TextEdit 0.92 AppKit).
+- **Instruments** — a 24-cell profiling-template **icon grid** (small labels) — **0.93**, read in correct
+  left→right/top→bottom order (Blank, Activity Monitor, Allocations … Swift Concurrency, System Trace).
+- **Font Book** — a **dense 361-typeface grid** (font name + style-count per cell, multilingual samples) —
+  **1.00**, 41 lines, every label present.
+- **Create ML** — light welcome state — 1.00. · Disk Utility's system-metadata table read 41 lines cleanly
+  (kept LOCAL, not egressed — personal disk-image names).
+
+**New surface-type confirmed: dense small-label ICON GRIDS** (Instruments, Font Book) read completely and in
+order — the most label-dense native layout, and it's not a problem. Two more apps (Script Editor, Automator)
+were launched but only surfaced a file-OPEN dialog showing personal folder names — skipped, not captured.
 
 **The one surface I could NOT reach, and why (honest):** a real **Xcode code editor** with a project. Xcode
 re-shows its first-launch component-install dialog as a MODAL on every launch; every CLI path (`open -a Xcode
