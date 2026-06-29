@@ -117,9 +117,9 @@ only at its first-launch component dialog (the editor needs ~8 GB of SDK compone
 this class but Xcode's own custom editor rendering is unconfirmed. (2) **Canvas/design tools (Figma)** — not
 installed; and these inherently carry near-zero extractable OCR text (a real product limitation, not a fixable
 bug — a design canvas mostly isn't text). (3) **Comms apps (Mail/Messages/WhatsApp/Slack)** — installed but
-*deliberately not captured*: they are private-by-default exclusions now, and capturing the user's real
-inbox/chats to benchmark them would repeat the privacy incident below. Validating chat/email OCR needs a
-**synthetic or consented fixture**, not the live account. (4) **Tiny isolated glyphs / run-on flag strings**
+*deliberately not captured from the real accounts* (private-by-default; capturing the live inbox would repeat
+the privacy incident below). **Now validated via SYNTHETIC fixtures instead — see the Comms section below.**
+(4) **Tiny isolated glyphs / run-on flag strings**
 (the Preview man-page misses) are an Apple-Vision resolution limit, not a filter bug.
 
 **Privacy — capture itself is the boundary, not just egress:** opening native apps shows whatever the user
@@ -131,7 +131,35 @@ vision, no egress) so a real store is never bulk-uploaded. Still needed before n
 pause/redaction control, and ideally allowlist-not-denylist for mixed-use apps (a code editor also holds
 private scratch — it can't be denylisted).
 
+## Comms surfaces (synthetic fixtures — privacy-safe, and representative)
+The real Mail/Messages/WhatsApp/Slack are private-by-default and were NOT captured. Instead, validated the comms
+surface *class* on three synthetic HTML fixtures (no PII) rendered with **Chrome headless at 2× scale**. This is
+not a cop-out for representativeness: **Slack, Discord, and WhatsApp Desktop are Electron (Chromium), and Gmail
+is web** — so Chromium-rendered pixels are essentially what those real apps draw.
+
+| fixture | surface stressed | fact-recall | |
+|---|---|---|---|
+| iMessage-style thread | **alternating L/R chat bubbles** (the reading-order risk) | 1.00 | |
+| Gmail inbox | dense list rows (sender · subject · time columns) | 1.00 | |
+| Slack channel | sidebar + main column, sender/timestamp/code/threads | 0.93 | only miss = the `👍 3` emoji reaction count |
+
+**fact-recall 0.98** — but the real test was **reading order + relational answering**, and both passed:
+- **Chat order is PRESERVED.** The alternating L/R bubbles read in correct conversational order top→bottom.
+  XY-cut does NOT scramble them into all-left-then-all-right, because the bubbles overlap the horizontal center
+  so there is no clean vertical gutter to (wrongly) column-split on. The big risk for chat OCR — out-of-order
+  turns — does not occur.
+- **Relational answering = 10/10 (1.00)**, including the 5 Gmail row-association questions. Gmail's list IS read
+  *column-major* (all senders, then all subjects, then all times — a clean inter-column gutter triggers the
+  vertical split), which de-interleaves each row. But every column preserves row ORDER, so the answerer re-zips
+  by position: "what time did the Stripe email arrive?" → 9:02 AM, "the GitHub one?" → 8:41 AM, both correct.
+  So column-major reading does not break answering for uniform lists (it *would* get fragile if a column had a
+  missing cell shifting the alignment — noted as a follow-up).
+- **Only systematic loss: emoji** (the `🔥`, `👍 3`, `🎉 1` reaction chips). Apple Vision doesn't read emoji
+  glyphs, so reaction counts vanish — low-information for recall, not worth a fix.
+
 ## Still open (follow-ups)
+- **Table/list row-association**: XY-cut reads strong-gutter lists column-major. Recoverable-by-index today (LLM
+  re-zips), but fragile if a column has a gap. A row-band-first pass for grid-detected regions would harden it.
 - Commit the capture gate as a runnable harness with LOCAL-by-default fact-gen (vision via local model;
   cloud only on synthetic/consented fixtures — never bulk-upload the live store).
 - END-TO-END re-gate: re-capture a corpus through the NEW pipeline and confirm S0 answer-correctness rises
