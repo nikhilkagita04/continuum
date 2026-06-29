@@ -37,7 +37,7 @@ Per-set: 5 web pages 0.96 · 6 web+native 0.98 · 3 non-English 0.98.
    `automaticallyDetectsLanguage` + a broad candidate list. Japanese reads cleanly (0.93); Latin unaffected.
 6. **Ship-parity**: the `.app` bundled `capture.swift` = AX-ONLY (the 0.31 path); now ships `screen` (OCR).
 
-## AX vs OCR (the prior panel's strategy question), settled by measurement
+## AX vs OCR (an earlier open question), settled by measurement
 Head-to-head: OCR+XY-cut beat the shipped AX extractor 5/5 pages (answerable 88 vs 19). AX is incomplete
 (drops <3-word facts), UNRELIABLE (a news page gave 168 lines one run, 1 the next), captures off-screen DOM.
 On the gate: OCR 0.80, AX 0.31, OCR+AX 0.84 — AX adds nothing once OCR is complete. **AX-as-primary refuted;**

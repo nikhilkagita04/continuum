@@ -31,6 +31,15 @@ const idx = { search: async (q, { k = 5 } = {}) => eps.map((ep) => ({ ep, score:
   const r = mapResult(eps.find((e) => e.app === 'Code'), now);
   ok('mapResult schema (when/app/who/type/text/id)', r.when && r.app === 'Code' && r.who === 'you' && r.type === 'document' && typeof r.text === 'string' && r.id.startsWith('ep_'));
   ok('snippet capped <= 280', r.text.length <= 280);
+  // always-dated structured contract
+  ok('mapResult carries calendar dates (as_of ISO + as_of_human) + citation_id', /^\d{4}-\d{2}-\d{2}T/.test(r.as_of) && /\b\d{4}\b/.test(r.as_of_human) && r.citation_id === r.id);
+  ok('provenance_tier defaults to observed-untrusted for raw OCR (injection defense)', r.provenance_tier === 'observed-untrusted');
+  // timezone: as_of_human must agree with as_of's UTC calendar day (no off-by-one near midnight)
+  const tz = mapResult({ app: 'X', content_hash: 'tz1', end: Date.parse('2024-06-18T08:40:00Z') }, now);
+  ok('as_of_human agrees with as_of UTC day (no TZ drift)', tz.as_of.startsWith('2024-06-18') && /Jun 18, 2024/.test(tz.as_of_human), `${tz.as_of} | ${tz.as_of_human}`);
+  // provenance tier elevates on an explicit confirmation flag
+  const conf = mapResult({ app: 'X', content_hash: 'c1', end: now, label: { tier: 'human-confirmed' } }, now);
+  ok('provenance_tier elevates to human-confirmed when tagged', conf.provenance_tier === 'human-confirmed');
 }
 
 // parseSince
@@ -49,6 +58,10 @@ ok('parseSince 7d', parseSince('7d', now) === now - 7 * 864e5);
   ok('recall app filter', onlySlack.every((r) => r.app === 'Slack') && onlySlack.length === 1);
   const audio = await recall(idx, eps, { query: 'x', sources: ['audio'], now });
   ok('recall source filter (audio)', audio.length === 1 && audio[0].app === 'Zoom');
+  // adaptation seam (M5): no rerank => default order; an injected rerank reorders (cloud overrides, core no-ops)
+  const base = await recall(idx, eps, { query: 'x', k: 5, now });
+  const rev = await recall(idx, eps, { query: 'x', k: 5, now, rerank: async (_q, hits) => [...hits].reverse() });
+  ok('recall rerank seam: default no-op vs injected re-ranker', base.length === rev.length && base[0].id !== rev[0].id, `${base[0]?.id} vs ${rev[0]?.id}`);
 }
 
 // catch_up — newest-first, deduped, excludes

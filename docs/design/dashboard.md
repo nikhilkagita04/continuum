@@ -80,7 +80,7 @@ inline SVG, preserving the one-command-install ethos. The whole UI is one served
   citations + graceful degradation); Timeline; Privacy & data; follow-system theming.
 - **v0.3:** conversational follow-ups on ask; weekly digest; richer "worth remembering" (LLM extraction
   of decisions / open loops / people); scheduled pause; export.
-- **v1:** Graph/entity view (graph/Pro tier).
+- **v1:** Graph/entity view (when the graph is enabled).
 
 ## 9. Success metrics (honest, given no telemetry)
 Local-first, **no usage analytics by design**. Signal is **qualitative**: GitHub stars/issues, user

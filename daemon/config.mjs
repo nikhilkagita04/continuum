@@ -6,7 +6,7 @@
 //   pro         — bring an OpenAI/Anthropic key (or our hosted endpoint). Adds the
 //                 temporal knowledge graph (entity/relation extraction needs a frontier
 //                 model — local models provably can't satisfy the schemas).
-//   enterprise  — self-hosted or cloud, team graph, SSO. (sales)
+//   (other tiers configure additional providers/keys; this file only reads them.)
 //
 // Resolution order: ~/.continuum/config.json  <  environment variables.
 import os from 'node:os';
@@ -28,7 +28,7 @@ export function writeRawConfig(obj) { fs.mkdirSync(DATA_DIR, { recursive: true }
 
 const DEFAULTS = {
   tier: 'free',
-  capture:    { source: 'screen', exclude: [] },  // screen (OCR) | ax; exclude = apps never captured
+  capture:    { source: 'screen', exclude: [], encryptAtRest: false },  // screen (OCR) | ax; exclude apps; encryptAtRest = AES-256-GCM store (keychain key)
   files:      { watch: [] },                          // dirs to capture writes from, e.g. ["~/Documents", "~/code"]
   embeddings: { provider: 'local', model: '' },     // local | ollama | openai | api
   llm:        { provider: 'none',  model: '' },      // none | ollama | openai | anthropic

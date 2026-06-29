@@ -19,21 +19,45 @@ export function relTime(t, now = Date.now()) {
   return `${ago} · ${new Date(t).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })}`;
 }
 
+// Supersession safety needs an UNAMBIGUOUS as-of, not just relative time: a machine-precise ISO
+// (for ordering / newest-wins) plus a human calendar date the agent renders ("as of Jun 18, 2026").
+export const isoDate = (t) => (t ? new Date(t).toISOString() : null);
+// UTC-pinned so the human calendar date can NEVER disagree with the ISO as_of (which is UTC). Without
+// timeZone the daemon's local TZ shifts a near-midnight date by a day — fatal for an "unambiguous as-of".
+export const humanDate = (t) => (t ? new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : 'unknown date');
+
+// Provenance trust-tier (injection defense). Raw OCR is `observed-untrusted` — the host agent must
+// treat it as quoted, attributed, NON-authoritative data, never as instructions, and never drive an
+// action from it. Promotion to `human-confirmed` happens via approve-then-PUBLISH; `system-derived` is
+// set by the dream/memory path. Honest default here: everything mapResult sees is observed-untrusted
+// unless an explicit tier/confirmed flag elevates it.
+export const provenanceTier = (e) =>
+  (e && (e.provenance_tier || (e.label && e.label.tier))) ||
+  ((e && (e.confirmed || (e.label && e.label.confirmed))) ? 'human-confirmed' : 'observed-untrusted');
+
 const ownerOf = (e) => {
   if (e.speaker) return e.speaker === 'you' ? 'you' : 'others';
   if (e.label && e.label.owner) return e.label.owner === 'me' ? 'you' : e.label.owner === 'other' ? 'others' : 'system';
   return (e.source_mix || []).includes('input') ? 'you' : 'system';
 };
 
-// Map an episode → the attributed, scrubbed, snippet-capped result schema (with a citation id).
+// Map an episode → the attributed, scrubbed, snippet-capped result schema. The structured presentation
+// contract the host agent renders: claim(text) · source_app · owner · as_of (ISO + human calendar
+// date) · citation_id · provenance_tier. `when`/`id` kept for back-compat.
 export function mapResult(e, now = Date.now()) {
+  const t = e.end || e.start || 0;
+  const id = e.content_hash ? `ep_${e.content_hash}` : `ep_${t}`;
   return {
-    when: relTime(e.end || e.start || 0, now),
+    when: relTime(t, now),              // human-relative ("2h ago · Mon 14:30")
+    as_of: isoDate(t),                  // machine-precise ISO — ordering / newest-wins / supersession
+    as_of_human: humanDate(t),          // unambiguous calendar date the agent renders ("Jun 18, 2026")
     app: e.app || 'Unknown',
     who: ownerOf(e),
     type: (e.label && e.label.type) || 'unknown',
+    provenance_tier: provenanceTier(e), // observed-untrusted | human-confirmed | system-derived
     text: scrub((e.structured && e.structured.summary) || e.text || '').slice(0, SNIP),
-    id: e.content_hash ? `ep_${e.content_hash}` : `ep_${e.end || e.start || 0}`,
+    id,
+    citation_id: id,                    // contract name; `id` retained for back-compat
   };
 }
 
@@ -55,9 +79,14 @@ const tOf = (e) => e.end || e.start || 0;
 
 // recall — semantic search + filters → attributed snippets.
 export async function recall(index, episodes, opts = {}) {
-  const { query, since, until, apps, sources, k = 5, exclude = [], floor = 0, now = Date.now() } = opts;
-  const hits = await index.search(query || '', { k: Math.max(k, 15), now, ...routeSearch(query || '') });
-  let eps = hits.map((h) => h.ep).filter(keep(exclude));
+  const { query, since, until, apps, sources, k = 5, exclude = [], floor = 0, rerank, searchOpts = {}, now = Date.now() } = opts;
+  // searchOpts spreads LAST so a caller can override fusion weights / recency / fusion mode per request
+  // without editing core; core itself passes nothing → the shipped defaults.
+  const hits = await index.search(query || '', { k: Math.max(k, 15), now, ...routeSearch(query || ''), ...searchOpts });
+  // Optional re-rank hook: a no-op by default (keeps the default order). A consumer may pass a
+  // rerank(query, hits) function to reorder results; core ships none.
+  const ranked = (typeof rerank === 'function') ? await rerank(query || '', hits) : hits;
+  let eps = ranked.map((h) => h.ep).filter(keep(exclude));
   const lo = Math.max(parseSince(since, now) || 0, floor || 0), hi = parseSince(until, now);
   if (lo) eps = eps.filter((e) => tOf(e) >= lo);
   if (hi != null) eps = eps.filter((e) => tOf(e) <= hi);

@@ -6,6 +6,7 @@
 import { loadEpisodes } from './store.mjs';
 import { writeMemory, readMemory, MEMORY_DIR } from './memory.mjs';
 import { instructionsBlock, activePreferences } from './preferences.mjs';
+import { scrub } from './mcp.mjs';   // PII + secret redaction before the digest leaves for the model
 
 const epId = (e) => 'ep_' + (e.content_hash || e.end || 0);
 const authored = (e) => (e.structured && e.structured.authored) || ((e.source_mix || []).includes('input') ? e.text : '') || ((e.label && e.label.owner === 'me') ? e.text : '');
@@ -20,12 +21,15 @@ export const SECTIONS = [
 ];
 
 // Compact, grounded evidence digest: the most salient/authored moments, each tagged with its id.
+// Dreaming sends this digest to the configured model — so it is SCRUBBED (PII + secret-shaped strings)
+// before it leaves the device (best-effort minimized, never raw). This is defense-in-depth, not the
+// egress boundary itself.
 export function digest(episodes, { n = 80, perChars = 170 } = {}) {
   return episodes
     .filter((e) => (e.text || '').length > 40)
     .sort((a, b) => (b.salience || 0) - (a.salience || 0) || (b.end || 0) - (a.end || 0))
     .slice(0, n)
-    .map((e) => `[${epId(e)}] (${e.app || '?'}) ${(authored(e) || e.text || '').replace(/\s+/g, ' ').slice(0, perChars)}`)
+    .map((e) => `[${epId(e)}] (${e.app || '?'}) ${scrub((authored(e) || e.text || '').replace(/\s+/g, ' ')).slice(0, perChars)}`)
     .join('\n');
 }
 

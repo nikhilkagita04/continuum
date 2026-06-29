@@ -2,6 +2,22 @@
 
 All notable changes. Dates are when the work landed; npm releases are tagged per version.
 
+## 0.9.0 — trust & security hardening + always-dated context (2026-06-29)
+A hardening pass that makes the local memory safe to put behind any agent, and puts an unambiguous date
+on every fact.
+- **Always-dated, attributed results.** Every `recall`/`catch_up`/`profile` result now carries a machine
+  ISO + a human calendar date ("as of Jun 18, 2026"), an owner, a provenance tier (raw OCR is
+  `observed-untrusted` — the agent quotes it, never treats it as instructions), and a stable citation id.
+  The MCP server renders the date + citation, and a `/api/moment` route opens the cited source moment.
+- **One audited egress chokepoint.** All outbound network goes through a single `egress.mjs` — a
+  fail-closed endpoint allowlist + an append-only ledger of what left the machine — and a CI test
+  **fails the build** if any other module makes a network call. The dreaming digest is scrubbed before it leaves.
+- **Encryption at rest (opt-in).** AES-256-GCM with a macOS-keychain key (`capture.encryptAtRest`); the
+  on-disk store becomes ciphertext, reads stay migration-tolerant, with an honest threat model documented.
+- **Robust loads + an optional re-rank hook.** `loadEpisodes` skips a single corrupt line instead of
+  reading the whole store as empty; `recall` accepts an optional `rerank(query, hits)` hook + per-request
+  `searchOpts`, over version-pinned default fusion weights.
+
 ## 0.8.0 — SOTA capture quality + honesty/safety hardening (2026-06-28)
 A capture-quality pass (the measured bottleneck — facts were present in noisy OCR token-soup but not
 cleanly *answerable*) plus a hardening pass that removes everything that shouldn't ship.
@@ -74,7 +90,7 @@ and capture unique-token ratio 0.70 → 0.84. The lesson: fixing capture beat an
   0.03 unique-token ratio). A browser-only **chrome filter** drops tab strips, bookmark bars, and nav
   toolbars (never touching code/terminal). New **`continuum clean`** salvages or deletes already-polluted
   episodes (backs up first). New `CONTINUUM_OCR_MINHEIGHT` knob.
-- **Retrieval: Reciprocal Rank Fusion by default.** Fuse the lexical + semantic rankings (Glean-style),
+- **Retrieval: Reciprocal Rank Fusion by default.** Fuse the lexical + semantic rankings (RRF),
   with recency/salience as light tie-breakers; weighted mode stays available for recency-dialed use.
   A/B on a real corpus: hashed→bge-m3→+RRF took hit@5 87% → 93% → 100%. Recommended embedder upgrade:
   `ollama pull bge-m3`. (An LLM reranker was tested and *dropped* — it damages an already-strong stage.)

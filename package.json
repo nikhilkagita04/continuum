@@ -1,6 +1,6 @@
 {
   "name": "continuum-core",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Your whole desktop context — everything you've seen, read, typed, and heard — as a single MCP your agent can use to understand you and how you work. Open source, local-first, on-device.",
   "type": "module",
   "bin": {
@@ -16,7 +16,7 @@
     "./config": "./daemon/config.mjs"
   },
   "scripts": {
-    "test": "node daemon/stage2/segmenter.test.mjs && node daemon/stage3/index.test.mjs && node daemon/stage4/distill.test.mjs && node daemon/pipeline.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/store.test.mjs && node daemon/eval/eval.test.mjs && node daemon/stage2/fusion.test.mjs && node daemon/stage4/label.test.mjs && node daemon/stage6/diff.test.mjs && node daemon/stage1/vision.test.mjs && node daemon/stage2/novelty.test.mjs && node daemon/stage2/typing.test.mjs && node daemon/stage1/chrome.test.mjs && node daemon/stage2/cap.test.mjs && node daemon/mcp.test.mjs && node daemon/context.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/preferences.test.mjs && node daemon/eval/measure.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/clean.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/memory.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/dream.test.mjs",
+    "test": "node daemon/stage2/segmenter.test.mjs && node daemon/stage3/index.test.mjs && node daemon/stage4/distill.test.mjs && node daemon/pipeline.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/store.test.mjs && node daemon/eval/eval.test.mjs && node daemon/stage2/fusion.test.mjs && node daemon/stage4/label.test.mjs && node daemon/stage6/diff.test.mjs && node daemon/stage1/vision.test.mjs && node daemon/stage2/novelty.test.mjs && node daemon/stage2/typing.test.mjs && node daemon/stage1/chrome.test.mjs && node daemon/stage2/cap.test.mjs && node daemon/mcp.test.mjs && node daemon/context.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/preferences.test.mjs && node daemon/eval/measure.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/clean.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/memory.test.mjs && CONTINUUM_DATA=$(mktemp -d) node daemon/dream.test.mjs && node daemon/egress-conformance.test.mjs && CONTINUUM_DATA=$(mktemp -d) CONTINUUM_KEY_FILE=1 node daemon/crypto-store.test.mjs",
     "verify": "node bin/continuum.mjs verify",
     "build:capture": "swiftc daemon/stage1/capture.swift -o daemon/stage1/capture",
     "build:app": "bash packaging/build-app.sh",

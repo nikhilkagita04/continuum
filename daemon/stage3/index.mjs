@@ -9,9 +9,15 @@ const K1 = 1.5, B = 0.75;
 // answer is the most RECENT match, not the most semantically central. Route those to recency-weighted
 // fusion; everything else uses RRF (best for general relevance). Surfaced by the validated eval.
 const RECENCY_Q = /\b(just|recently|latest|last|current(ly)?|now|today|tonight|this (week|morning|afternoon|evening)|most recent|earlier|previous)\b/i;
+// Default fusion weights — version-pinned and derived only from the public eval corpus, so they are
+// reproducible from public data. These are the shipped defaults; a caller may override them per request
+// via the search `weights` option.
+export const DEFAULT_WEIGHTS = { vec: 0.5, kw: 0.3, rec: 0.1, sal: 0.1 };    // general relevance (RRF tie-breaks)
+export const RECENCY_WEIGHTS = { vec: 0.35, kw: 0.3, rec: 0.3, sal: 0.05 };  // recency-routed queries
+
 export function routeSearch(query) {
   return RECENCY_Q.test(query || '')
-    ? { fusion: 'weighted', weights: { vec: 0.35, kw: 0.3, rec: 0.3, sal: 0.05 } }
+    ? { fusion: 'weighted', weights: RECENCY_WEIGHTS }
     : { fusion: 'rrf' };
 }
 
@@ -50,7 +56,7 @@ export class HybridIndex {
     return s;
   }
 
-  async search(query, { k = 5, now = 0, weights = { vec: 0.5, kw: 0.3, rec: 0.1, sal: 0.1 }, fusion = 'rrf' } = {}) {
+  async search(query, { k = 5, now = 0, weights = DEFAULT_WEIGHTS, fusion = 'rrf' } = {}) {
     if (!this.docs.length) return [];
     const qv = this.embed ? await this.embed(query) : null;
     const qt = terms(query);
@@ -63,7 +69,7 @@ export class HybridIndex {
       sal: d.salience,
     }));
     if (fusion === 'rrf') {
-      // Reciprocal Rank Fusion of the lexical + semantic rankings (Glean-style) — robust to the two
+      // Reciprocal Rank Fusion (RRF) of the lexical + semantic rankings — robust to the two
       // signals being on different scales; recency/salience kept as light tie-breaking bonuses.
       const ranksOf = (f) => { const order = scored.map((_, i) => i).sort((a, b) => scored[b][f] - scored[a][f]); const r = new Array(scored.length); order.forEach((i, rank) => { r[i] = rank; }); return r; };
       const rv = ranksOf('vec'), rk = ranksOf('kw'), rr = ranksOf('rec'), rs = ranksOf('sal'); const C = 60;

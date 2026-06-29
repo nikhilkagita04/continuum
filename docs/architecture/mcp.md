@@ -35,7 +35,7 @@ The `initialize` response carries a freshly-computed, **cheap heuristic user sna
 already knowing roughly who you are — `profile`/`recall` are for depth. Plus the framing: *treat this
 as getting to know a teammate; use judgment; never fabricate; cite.*
 
-`profile` degrades honestly: **heuristic** on the free tier (top apps/types, recurring entities, and
+`profile` degrades honestly: **heuristic** without a model (top apps/types, recurring entities, and
 your own authored text as a voice signal), **LLM-synthesized** when a model is configured (every claim
 grounded in cited moments, labeled inference, never invented).
 

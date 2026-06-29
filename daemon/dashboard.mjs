@@ -10,6 +10,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { buildDeps, loadConfig, DATA_DIR, readRawConfig, writeRawConfig } from './config.mjs';
 import { loadEpisodes, loadIndex, STORE_FILE, rewriteEpisodes } from './store.mjs';
+import { isoDate, humanDate } from './mcp.mjs';   // one source of truth for the dated contract (UTC-pinned)
 import { extractStated, extractInferred, activePreferences, loadStore as prefStore, approve as prefApprove, dismiss as prefDismiss, removeApproved as prefRemove } from './preferences.mjs';
 
 const { embed, llm } = buildDeps();
@@ -173,6 +174,24 @@ function setPause(on) {
   if (on) fs.writeFileSync(PAUSE, String(Date.now()));
   else { try { fs.unlinkSync(PAUSE); } catch { /* already off */ } }
   return { paused: fs.existsSync(PAUSE) };
+}
+
+// Moment-detail — the citation target for the agent's "[open this moment]". Given an MCP citation_id
+// (ep_<content_hash>), return the full source episode so a claim can be inspected. Local audit surface,
+// so it returns the FULL text (not the scrubbed/capped MCP snippet).
+function moment(id) {
+  const hash = String(id || '').replace(/^ep_/, '');
+  if (!hash) return { error: 'missing id' };
+  const eps = loadEpisodes();
+  // resolve by content_hash, OR by the `ep_<timestamp>` fallback mapResult emits for hash-less episodes
+  const e = eps.find((x) => x.content_hash === hash) || eps.find((x) => String(x.end || x.start || 0) === hash);
+  if (!e) return { error: 'not found', id };
+  const t = e.end || e.start || 0;
+  return {
+    id: `ep_${e.content_hash || t}`, app: e.app || 'Unknown', title: e.title || null, url_host: e.url_host || null,
+    as_of: isoDate(t), as_of_human: humanDate(t),   // same UTC-pinned helpers as the MCP contract — can't disagree
+    start: e.start || null, end: e.end || null, source_mix: e.source_mix || [], text: e.text || '',
+  };
 }
 
 function delEpisode(hash) {
@@ -557,6 +576,7 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/state') return json(res, state());
     if (p === '/api/insights') return json(res, await insights());
     if (p === '/api/timeline') return json(res, await timeline(u.searchParams));
+    if (p === '/api/moment') return json(res, moment(u.searchParams.get('id')));   // citation target for "[open this moment]"
     if (p === '/api/ask' && req.method === 'POST') return json(res, await ask((await body(req)).query || ''));
     if (p === '/api/exclude' && req.method === 'POST') { const b = await body(req); return json(res, setExclude(b.app, b.remove)); }
     if (p === '/api/pause' && req.method === 'POST') return json(res, setPause(!!(await body(req)).paused));

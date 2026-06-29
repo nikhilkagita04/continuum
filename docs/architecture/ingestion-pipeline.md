@@ -182,11 +182,11 @@ is missing.
 
 ---
 
-## Privacy tiers (B2B)
+## Privacy
 
-The rollup (Stage 4) is where the **consented, PII-redacted team-knowledge layer** is
-produced. Raw episodes never leave the device; only approved, redacted rollups roll up
-to the team graph. Employee-first, privacy-tiered — the company never sees raw data.
+Capture and indexing run **on-device**; raw episodes never leave the machine. Only the small
+consolidated memory and the snippets a query needs go to the model you configure, through best-effort
+redaction — and you stay in control of what is captured and what is shared.
 
 ---
 
