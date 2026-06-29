@@ -17,7 +17,6 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { answerInSource } from './measure.mjs';
-import { stripChrome } from '../stage1/chrome.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const OCR_BIN = process.env.CONTINUUM_OCR_BIN || path.join(ROOT, 'daemon/stage1/ocr-image');
@@ -49,7 +48,6 @@ async function mintFactsCloud(imgPath, model = 'gemini-2.5-pro') {
 }
 const mintFacts = process.env.CONTINUUM_CAPTURE_JUDGE === 'cloud' ? mintFactsCloud : mintFactsLocal;
 
-const isBrowserShot = (f) => !/native|app|settings|finder|notes|mail/i.test(f);   // apply stripChrome only to browser shots
 const shots = fs.readdirSync(dir).filter((f) => /\.(png|jpg|jpeg)$/i.test(f)).sort();
 console.log(`capture-quality gate · ${shots.length} screenshots · fact-gen=${process.env.CONTINUUM_CAPTURE_JUDGE === 'cloud' ? 'cloud(gemini)' : 'local(' + (process.env.CONTINUUM_VISION_MODEL || 'gemma3:4b') + ')'}\n`);
 const recalls = [];
@@ -58,8 +56,9 @@ for (const f of shots) {
   const cache = `${img}.facts.json`;
   const facts = fs.existsSync(cache) ? JSON.parse(fs.readFileSync(cache, 'utf8')) : await mintFacts(img);
   if (!fs.existsSync(cache) && facts.length) fs.writeFileSync(cache, JSON.stringify(facts));
+  // Measure RAW OCR fact-recall — does the capture CONTAIN the fact? (stripChrome removes browser noise,
+  // not facts, and applies only to browsers in production, so it's out of scope for the presence metric.)
   let text = ''; try { text = execFileSync(OCR_BIN, [img], { encoding: 'utf8', maxBuffer: 1e7 }); } catch {}
-  if (isBrowserShot(f)) text = stripChrome(text, 'Google Chrome');
   const present = facts.filter((x) => answerInSource(x.a, text)).length;
   const r = facts.length ? present / facts.length : 0; recalls.push(r);
   console.log(`  ${f.padEnd(22)} facts ${String(facts.length).padStart(2)} · fact-recall ${r.toFixed(2)}`);

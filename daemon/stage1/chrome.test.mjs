@@ -9,9 +9,11 @@ const ok = (n, c, x = '') => { if (c) { pass++; console.log(`  ✓ ${n}`); } els
 
 console.log('\nstripChrome (tab-strip noise filter)\n');
 
-// garbled tab strip: lines that are mostly 1-char / "x" tokens (close buttons + truncated titles)
-const tabStrip = ['Nikh X 4 Verc X', 'X Move x |', 'Goo, X'].join('\n');
+// garbled tab strip: lines with MANY (>=2) 1-char / "x" tokens (close buttons + truncated titles)
+const tabStrip = ['Nikh X 4 Verc X', 'X Move x |'].join('\n');
 ok('drops garbled tab-strip noise', stripChrome(tabStrip, 'Google Chrome').trim() === '', JSON.stringify(stripChrome(tabStrip, 'Google Chrome')));
+// single arrow/close misread on a real nav/content line is KEPT (the >=2-junk rule avoids false positives)
+ok('keeps single-junk content ("U.S. v", "For Business +")', stripChrome('U.S. v\nFor Business +', 'Google Chrome') === 'U.S. v\nFor Business +');
 
 // THE regression that matters: short CONTENT facts must SURVIVE (the old run-of-short-lines strip deleted them)
 const content = ['Iran war', 'World Cup 2026', 'Louisiana primary', '3.2K impressions', 'For Business',

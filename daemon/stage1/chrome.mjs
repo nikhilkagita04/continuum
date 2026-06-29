@@ -8,12 +8,15 @@ export const isBrowser = (app = '') => BROWSER.test(app);
 const wordCount = (line) => (line.match(/[a-z0-9]+/gi) || []).length;
 const shortLine = (line) => wordCount(line) > 0 && wordCount(line) <= 3;
 
-// Tab-strip noise: lots of 1-char / "x" tokens (tab close buttons + truncated titles like "Nikh X").
+// Tab-strip noise: a row of tab close-buttons + truncated titles ("Nikh X Cont X Gmai X") OCRs as many
+// 1-char / "x" tokens. Require BOTH a high junk ratio AND >=2 junk tokens, so a genuine garbled tab strip
+// is caught but a short content/nav line with a single arrow-misread ("U.S. v", "For Business +") is kept
+// — the single-junk case was costing ~0.05 fact-recall.
 const tabNoise = (line) => {
   const toks = line.split(/\s+/).filter(Boolean);
   if (toks.length < 2) return false;
   const junk = toks.filter((t) => t.length <= 1 || /^x+$/i.test(t)).length;
-  return junk / toks.length >= 0.4;
+  return junk >= 2 && junk / toks.length >= 0.4;
 };
 
 // Per-frame chrome removal does ONLY what's unambiguous junk: drop garbled tab-strip noise (OCR misreads
